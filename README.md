@@ -17,7 +17,7 @@ Build and install:
 
 ```sh
 npx @vscode/vsce package --allow-missing-repository --skip-license
-"/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code" --install-extension amend-any-commit-0.4.0.vsix
+"/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code" --install-extension amend-any-commit-0.4.1.vsix
 ```
 
 The icon is drawn by `python3 tools/draw-icon.py icon.png` (needs Pillow).

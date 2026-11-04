@@ -2,7 +2,7 @@
 	"name": "amend-any-commit",
 	"displayName": "Amend Any Commit",
 	"description": "%description%",
-	"version": "0.4.0",
+	"version": "0.4.1",
 	"publisher": "corentin-gautier",
 	"license": "MIT",
 	"icon": "icon.png",
