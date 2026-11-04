@@ -1,0 +1,44 @@
+{
+	"name": "reword-commit",
+	"displayName": "Reword Commit",
+	"description": "%description%",
+	"version": "0.1.0",
+	"publisher": "corentin-gautier",
+	"license": "MIT",
+	"engines": {
+		"vscode": "^1.100.0"
+	},
+	"categories": [
+		"SCM Providers"
+	],
+	"main": "./extension.js",
+	"l10n": "./l10n",
+	"enabledApiProposals": [
+		"contribSourceControlHistoryItemMenu"
+	],
+	"activationEvents": [],
+	"contributes": {
+		"commands": [
+			{
+				"command": "rewordCommit.reword",
+				"title": "%command.reword%",
+				"category": "Git"
+			}
+		],
+		"menus": {
+			"commandPalette": [
+				{
+					"command": "rewordCommit.reword",
+					"when": "false"
+				}
+			],
+			"scm/historyItem/context": [
+				{
+					"command": "rewordCommit.reword",
+					"when": "scmProvider == git && !listMultiSelection",
+					"group": "4_modify@2"
+				}
+			]
+		}
+	}
+}

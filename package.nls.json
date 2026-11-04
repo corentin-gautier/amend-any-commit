@@ -1,0 +1,4 @@
+{
+	"description": "Edit a commit message from the right-click menu of the Source Control Graph.",
+	"command.reword": "Edit Commit Message..."
+}

@@ -1,0 +1,13 @@
+{
+	"This commit is not on the current branch.": "Ce commit n'est pas sur la branche courante.",
+	"A rebase, merge or cherry-pick is in progress.": "Un rebase, un merge ou un cherry-pick est en cours.",
+	"Commit or stash your changes first.": "Commitez ou remisez d'abord vos modifications.",
+	"There is a merge commit between this commit and HEAD.": "Il y a un commit de merge entre ce commit et HEAD.",
+	"Cannot edit the message: {0}": "Impossible de modifier le message : {0}",
+	"Edit Commit Message ({0})": "Modifier le message du commit ({0})",
+	"The commit description is kept.": "La description du commit est conservée.",
+	"The message cannot be empty.": "Le message ne peut pas être vide.",
+	"Edit Anyway": "Modifier quand même",
+	"This commit is already pushed": "Ce commit est déjà poussé",
+	"Its history will be rewritten: you will need to force push (git push --force-with-lease).": "Son historique sera réécrit : il faudra forcer le push (git push --force-with-lease)."
+}

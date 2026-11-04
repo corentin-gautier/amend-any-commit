@@ -1,0 +1,4 @@
+{
+	"description": "Modifier le message d'un commit depuis le clic droit du graphe du contrôle de code source.",
+	"command.reword": "Modifier le message du commit..."
+}
