@@ -109,7 +109,7 @@ async function rewordCommand(context, sourceControl, historyItem) {
 }
 
 function activate(context) {
-	context.subscriptions.push(vscode.commands.registerCommand('easyCommitReword.reword',
+	context.subscriptions.push(vscode.commands.registerCommand('amendAnyCommit.amend',
 		(sourceControl, historyItem) => rewordCommand(context, sourceControl, historyItem)));
 }
 
