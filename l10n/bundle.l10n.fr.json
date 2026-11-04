@@ -9,5 +9,8 @@
 	"The message cannot be empty.": "Le message ne peut pas être vide.",
 	"Edit Anyway": "Modifier quand même",
 	"This commit is already pushed": "Ce commit est déjà poussé",
-	"Its history will be rewritten: you will need to force push (git push --force-with-lease).": "Son historique sera réécrit : il faudra forcer le push (git push --force-with-lease)."
+	"Its history will be rewritten: you will need to force push (git push --force-with-lease).": "Son historique sera réécrit : il faudra forcer le push (git push --force-with-lease).",
+	"Force push after editing (git push --force-with-lease)": "Forcer le push après la modification (git push --force-with-lease)",
+	"$(check) Message edited and force pushed": "$(check) Message modifié et push forcé",
+	"The message is edited, but the force push failed: {0}": "Le message est modifié, mais le push forcé a échoué : {0}"
 }

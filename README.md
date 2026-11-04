@@ -5,7 +5,7 @@ Adds **Edit Commit Message...** to the right-click menu of a commit in VS Code's
 - The last commit is amended; an older one is rewritten and the commits after it are replayed on top (same trees, so no conflicts).
 - Author and date are kept. The input box edits the subject line; the description is kept as is.
 - Refused when the tree has uncommitted changes, an operation is in progress, or a merge commit is in the way.
-- Warns before rewriting a commit the upstream already has (you will need `git push --force-with-lease`).
+- For a commit the upstream already has, a toggle in the field force pushes right after (`--force-with-lease` against the upstream seen before the edit, so commits pushed meanwhile are never lost); the choice is remembered. Left off, a warning reminds you to force push yourself.
 
 The menu is a proposed API, so VS Code must allow it in `~/.vscode/argv.json`:
 

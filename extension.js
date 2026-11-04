@@ -1,5 +1,7 @@
 const vscode = require('vscode');
-const { inspect, reword, RewordError } = require('./reword');
+const { inspect, reword, forcePush, RewordError } = require('./reword');
+
+const FORCE_PUSH_KEY = 'forcePush';
 
 function errorText(error) {
 	if (error instanceof RewordError) {
@@ -13,7 +15,44 @@ function errorText(error) {
 	return error.stderr || error.message;
 }
 
-async function rewordCommand(sourceControl, historyItem) {
+// Asks for the new subject. For a pushed commit, a toggle in the field chooses whether to force push
+// right after. Resolves with { subject, forcePush }, or undefined when cancelled.
+function askSubject(info, subject, hasBody, forcePushDefault) {
+	return new Promise(resolve => {
+		const input = vscode.window.createInputBox();
+		input.title = vscode.l10n.t('Edit Commit Message ({0})', info.sha.slice(0, 7));
+		input.value = subject;
+		input.valueSelection = [0, subject.length];
+		input.prompt = hasBody ? vscode.l10n.t('The commit description is kept.') : undefined;
+		const toggle = {
+			iconPath: new vscode.ThemeIcon('repo-force-push'),
+			tooltip: vscode.l10n.t('Force push after editing (git push --force-with-lease)'),
+			location: vscode.QuickInputButtonLocation.Input,
+			toggle: { checked: forcePushDefault },
+		};
+		if (info.pushed) {
+			input.buttons = [toggle];
+		}
+		let result;
+		input.onDidChangeValue(value => {
+			input.validationMessage = value.trim() ? undefined : vscode.l10n.t('The message cannot be empty.');
+		});
+		input.onDidAccept(() => {
+			if (!input.value.trim()) {
+				return;
+			}
+			result = { subject: input.value.trim(), forcePush: info.pushed && toggle.toggle.checked };
+			input.hide();
+		});
+		input.onDidHide(() => {
+			input.dispose();
+			resolve(result);
+		});
+		input.show();
+	});
+}
+
+async function rewordCommand(context, sourceControl, historyItem) {
 	const cwd = sourceControl?.rootUri?.fsPath;
 	const commit = historyItem?.id;
 	if (!cwd || !commit) {
@@ -30,18 +69,16 @@ async function rewordCommand(sourceControl, historyItem) {
 	// The input box only holds one line, so it edits the subject and keeps the body as is.
 	const [subject, ...rest] = info.message.split('\n');
 	const body = rest.join('\n');
-	const newSubject = await vscode.window.showInputBox({
-		title: vscode.l10n.t('Edit Commit Message ({0})', info.sha.slice(0, 7)),
-		value: subject,
-		valueSelection: [0, subject.length],
-		prompt: body.trim() ? vscode.l10n.t('The commit description is kept.') : undefined,
-		validateInput: value => value.trim() ? undefined : vscode.l10n.t('The message cannot be empty.'),
-	});
-	if (newSubject === undefined || newSubject === subject) {
+	const answer = await askSubject(info, subject, body.trim() !== '', context.globalState.get(FORCE_PUSH_KEY, false));
+	if (!answer || answer.subject === subject) {
 		return;
 	}
-
 	if (info.pushed) {
+		context.globalState.update(FORCE_PUSH_KEY, answer.forcePush);
+	}
+
+	// Ticking force push is already the informed choice; otherwise warn that the history diverges.
+	if (info.pushed && !answer.forcePush) {
 		const proceed = vscode.l10n.t('Edit Anyway');
 		const choice = await vscode.window.showWarningMessage(
 			vscode.l10n.t('This commit is already pushed'),
@@ -55,14 +92,25 @@ async function rewordCommand(sourceControl, historyItem) {
 
 	try {
 		await vscode.window.withProgress({ location: vscode.ProgressLocation.SourceControl }, () =>
-			reword(cwd, info, [newSubject.trim(), body].join('\n')));
+			reword(cwd, info, [answer.subject, body].join('\n')));
 	} catch (error) {
 		vscode.window.showErrorMessage(vscode.l10n.t('Cannot edit the message: {0}', errorText(error)));
+		return;
+	}
+
+	if (answer.forcePush) {
+		try {
+			await vscode.window.withProgress({ location: vscode.ProgressLocation.SourceControl }, () => forcePush(cwd, info));
+			vscode.window.setStatusBarMessage(vscode.l10n.t('$(check) Message edited and force pushed'), 4000);
+		} catch (error) {
+			vscode.window.showErrorMessage(vscode.l10n.t('The message is edited, but the force push failed: {0}', errorText(error)));
+		}
 	}
 }
 
 function activate(context) {
-	context.subscriptions.push(vscode.commands.registerCommand('rewordCommit.reword', rewordCommand));
+	context.subscriptions.push(vscode.commands.registerCommand('rewordCommit.reword',
+		(sourceControl, historyItem) => rewordCommand(context, sourceControl, historyItem)));
 }
 
 module.exports = { activate };

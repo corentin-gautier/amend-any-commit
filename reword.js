@@ -57,10 +57,24 @@ async function inspect(cwd, commit) {
 	const message = await git(cwd, ['log', '-1', '--format=%B', sha]);
 	// Rewriting a commit the upstream already has means a force push afterwards.
 	let pushed = false;
-	if (await succeeds(cwd, ['rev-parse', '--verify', '@{upstream}'])) {
-		pushed = await succeeds(cwd, ['merge-base', '--is-ancestor', sha, '@{upstream}']);
+	let upstream;
+	const branch = await git(cwd, ['symbolic-ref', '--quiet', '--short', 'HEAD']).catch(() => undefined);
+	if (branch && await succeeds(cwd, ['rev-parse', '--verify', '@{upstream}'])) {
+		upstream = {
+			remote: await git(cwd, ['config', `branch.${branch}.remote`]),
+			ref: await git(cwd, ['config', `branch.${branch}.merge`]),
+			sha: await git(cwd, ['rev-parse', '@{upstream}']),
+		};
+		pushed = await succeeds(cwd, ['merge-base', '--is-ancestor', sha, upstream.sha]);
 	}
-	return { sha, head, parents, message, pushed };
+	return { sha, head, parents, message, pushed, upstream };
+}
+
+// Pushes the rewritten branch, but only if the remote still points where it did before the reword,
+// so commits someone else pushed in between are never lost.
+async function forcePush(cwd, info) {
+	const { remote, ref, sha } = info.upstream;
+	await git(cwd, ['push', '--porcelain', `--force-with-lease=${ref}:${sha}`, remote, `HEAD:${ref}`]);
 }
 
 // Replaces the message of `info.sha` (from inspect) and replays the commits after it.
@@ -85,4 +99,4 @@ async function reword(cwd, info, message) {
 	return rewritten;
 }
 
-module.exports = { inspect, reword, RewordError };
+module.exports = { inspect, reword, forcePush, RewordError };
