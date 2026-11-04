@@ -1,15 +1,24 @@
 {
-	"name": "reword-commit",
-	"displayName": "Reword Commit",
+	"name": "easy-commit-reword",
+	"displayName": "Easy Commit Reword",
 	"description": "%description%",
-	"version": "0.2.0",
+	"version": "0.3.0",
 	"publisher": "corentin-gautier",
 	"license": "MIT",
+	"icon": "icon.png",
 	"engines": {
 		"vscode": "^1.100.0"
 	},
 	"categories": [
 		"SCM Providers"
+	],
+	"keywords": [
+		"amend",
+		"reword",
+		"commit message",
+		"edit commit",
+		"rebase",
+		"git graph"
 	],
 	"main": "./extension.js",
 	"l10n": "./l10n",
@@ -20,7 +29,7 @@
 	"contributes": {
 		"commands": [
 			{
-				"command": "rewordCommit.reword",
+				"command": "easyCommitReword.reword",
 				"title": "%command.reword%",
 				"category": "Git"
 			}
@@ -28,13 +37,13 @@
 		"menus": {
 			"commandPalette": [
 				{
-					"command": "rewordCommit.reword",
+					"command": "easyCommitReword.reword",
 					"when": "false"
 				}
 			],
 			"scm/historyItem/context": [
 				{
-					"command": "rewordCommit.reword",
+					"command": "easyCommitReword.reword",
 					"when": "scmProvider == git && !listMultiSelection",
 					"group": "4_modify@2"
 				}

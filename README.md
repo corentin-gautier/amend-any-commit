@@ -1,4 +1,4 @@
-# Reword Commit
+# Easy Commit Reword
 
 Adds **Edit Commit Message...** to the right-click menu of a commit in VS Code's Source Control Graph.
 
@@ -10,12 +10,14 @@ Adds **Edit Commit Message...** to the right-click menu of a commit in VS Code's
 The menu is a proposed API, so VS Code must allow it in `~/.vscode/argv.json`:
 
 ```jsonc
-"enable-proposed-api": ["corentin-gautier.reword-commit"]
+"enable-proposed-api": ["corentin-gautier.easy-commit-reword"]
 ```
 
 Build and install:
 
 ```sh
 npx @vscode/vsce package --allow-missing-repository --skip-license
-"/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code" --install-extension reword-commit-0.1.0.vsix
+"/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code" --install-extension easy-commit-reword-0.3.0.vsix
 ```
+
+The icon is drawn by `python3 tools/draw-icon.py icon.png` (needs Pillow).

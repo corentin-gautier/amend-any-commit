@@ -1,4 +1,4 @@
 {
-	"description": "Edit a commit message from the right-click menu of the Source Control Graph.",
+	"description": "Edit (amend) any commit message from the right-click menu of the Source Control Graph, and force push if needed.",
 	"command.reword": "Edit Commit Message..."
 }

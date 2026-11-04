@@ -1,4 +1,4 @@
 {
-	"description": "Modifier le message d'un commit depuis le clic droit du graphe du contrôle de code source.",
+	"description": "Modifier (amend) le message de n'importe quel commit depuis le clic droit du graphe du contrôle de code source, et forcer le push si besoin.",
 	"command.reword": "Modifier le message du commit..."
 }
