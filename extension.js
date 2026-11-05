@@ -1,5 +1,6 @@
 const vscode = require('vscode');
-const { inspect, reword, forcePush, RewordError } = require('./reword');
+const path = require('path');
+const { inspect, reword, forcePush, repositoryRoot, listCommits, RewordError } = require('./reword');
 
 const FORCE_PUSH_KEY = 'forcePush';
 
@@ -52,9 +53,7 @@ function askSubject(info, subject, hasBody, forcePushDefault) {
 	});
 }
 
-async function rewordCommand(context, sourceControl, historyItem) {
-	const cwd = sourceControl?.rootUri?.fsPath;
-	const commit = historyItem?.id;
+async function amendCommit(context, cwd, commit) {
 	if (!cwd || !commit) {
 		return;
 	}
@@ -108,9 +107,89 @@ async function rewordCommand(context, sourceControl, historyItem) {
 	}
 }
 
+// The open git repositories, from the built-in git extension.
+async function openRepositories() {
+	const extension = vscode.extensions.getExtension('vscode.git');
+	if (!extension) {
+		return [];
+	}
+	const git = (extension.isActive ? extension.exports : await extension.activate()).getAPI(1);
+	return git.repositories.map(repository => repository.rootUri.fsPath);
+}
+
+// Picks the repository to work in: the only one, the one holding the active file, or the user's choice.
+async function pickRepository() {
+	const roots = await openRepositories();
+	if (roots.length <= 1) {
+		return roots[0];
+	}
+	const active = vscode.window.activeTextEditor?.document.uri;
+	if (active?.scheme === 'file') {
+		const owner = roots
+			.filter(root => active.fsPath.startsWith(root + path.sep))
+			.sort((a, b) => b.length - a.length)[0];
+		if (owner) {
+			return owner;
+		}
+	}
+	const choice = await vscode.window.showQuickPick(
+		roots.map(root => ({ label: `$(repo) ${path.basename(root)}`, description: root, root })),
+		{ placeHolder: vscode.l10n.t('Choose a repository') },
+	);
+	return choice?.root;
+}
+
+// Lets the user choose among the commits that can be reworded.
+async function pickCommit(cwd) {
+	const commits = await listCommits(cwd);
+	if (commits.length === 0) {
+		vscode.window.showInformationMessage(vscode.l10n.t('There is no commit to edit on this branch.'));
+		return undefined;
+	}
+	const choice = await vscode.window.showQuickPick(
+		commits.map(commit => ({
+			label: `$(git-commit) ${commit.subject}`,
+			description: commit.sha.slice(0, 7),
+			detail: `${commit.author}, ${commit.date}`,
+			sha: commit.sha,
+		})),
+		{ placeHolder: vscode.l10n.t('Choose the commit whose message to edit'), matchOnDescription: true },
+	);
+	return choice?.sha;
+}
+
 function activate(context) {
-	context.subscriptions.push(vscode.commands.registerCommand('amendAnyCommit.amend',
-		(sourceControl, historyItem) => rewordCommand(context, sourceControl, historyItem)));
+	context.subscriptions.push(
+		// Source Control Graph: (source control, history item).
+		vscode.commands.registerCommand('amendAnyCommit.amend', (sourceControl, historyItem) =>
+			amendCommit(context, sourceControl?.rootUri?.fsPath, historyItem?.id)),
+		// Timeline: (git timeline item, file uri). The item's ref is the commit hash.
+		vscode.commands.registerCommand('amendAnyCommit.amendFromTimeline', async (item, uri) => {
+			const commit = item?.ref ?? item?.id;
+			if (!commit || uri?.scheme !== 'file') {
+				return;
+			}
+			let cwd;
+			try {
+				cwd = await repositoryRoot(path.dirname(uri.fsPath));
+			} catch (error) {
+				vscode.window.showErrorMessage(vscode.l10n.t('Cannot edit the message: {0}', errorText(error)));
+				return;
+			}
+			await amendCommit(context, cwd, commit);
+		}),
+		// Command Palette, or the "..." menu of the Source Control view (which passes its source control).
+		vscode.commands.registerCommand('amendAnyCommit.pick', async sourceControl => {
+			const cwd = sourceControl?.rootUri?.fsPath ?? await pickRepository();
+			if (!cwd) {
+				return;
+			}
+			const commit = await pickCommit(cwd);
+			if (commit) {
+				await amendCommit(context, cwd, commit);
+			}
+		}),
+	);
 }
 
 module.exports = { activate };

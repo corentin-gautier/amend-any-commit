@@ -99,4 +99,23 @@ async function reword(cwd, info, message) {
 	return rewritten;
 }
 
-module.exports = { inspect, reword, forcePush, RewordError };
+function repositoryRoot(dir) {
+	return git(dir, ['rev-parse', '--show-toplevel']);
+}
+
+// The commits that can be reworded, newest first: the current branch back to its first merge commit,
+// since everything at or after a merge is refused anyway.
+async function listCommits(cwd, limit = 200) {
+	const out = await git(cwd, ['log', '--first-parent', '-n', String(limit), '--format=%H%x1f%s%x1f%an%x1f%ar%x1f%P']).catch(() => '');
+	const commits = [];
+	for (const line of out.split('\n').filter(Boolean)) {
+		const [sha, subject, author, date, parents] = line.split('\x1f');
+		if (parents.split(' ').length > 1) {
+			break;
+		}
+		commits.push({ sha, subject, author, date });
+	}
+	return commits;
+}
+
+module.exports = { inspect, reword, forcePush, repositoryRoot, listCommits, RewordError };

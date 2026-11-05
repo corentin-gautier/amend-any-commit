@@ -12,5 +12,8 @@
 	"Its history will be rewritten: you will need to force push (git push --force-with-lease).": "Son historique sera réécrit : il faudra forcer le push (git push --force-with-lease).",
 	"Force push after editing (git push --force-with-lease)": "Forcer le push après la modification (git push --force-with-lease)",
 	"$(check) Message edited and force pushed": "$(check) Message modifié et push forcé",
-	"The message is edited, but the force push failed: {0}": "Le message est modifié, mais le push forcé a échoué : {0}"
+	"The message is edited, but the force push failed: {0}": "Le message est modifié, mais le push forcé a échoué : {0}",
+	"Choose a repository": "Choisissez un dépôt",
+	"There is no commit to edit on this branch.": "Il n'y a aucun commit à modifier sur cette branche.",
+	"Choose the commit whose message to edit": "Choisissez le commit dont modifier le message"
 }

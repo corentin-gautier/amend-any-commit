@@ -2,15 +2,25 @@
 	"name": "amend-any-commit",
 	"displayName": "Amend Any Commit",
 	"description": "%description%",
-	"version": "0.4.1",
+	"version": "0.5.0",
 	"publisher": "corentin-gautier",
+	"author": "Corentin Gautier",
 	"license": "MIT",
 	"icon": "icon.png",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/corentin-gautier/amend-any-commit"
+	},
+	"bugs": {
+		"url": "https://github.com/corentin-gautier/amend-any-commit/issues"
+	},
+	"homepage": "https://github.com/corentin-gautier/amend-any-commit#readme",
 	"engines": {
 		"vscode": "^1.100.0"
 	},
 	"categories": [
-		"SCM Providers"
+		"SCM Providers",
+		"Other"
 	],
 	"keywords": [
 		"amend",
@@ -18,10 +28,18 @@
 		"commit message",
 		"edit commit",
 		"rebase",
-		"git graph"
+		"git",
+		"git graph",
+		"force push"
 	],
 	"main": "./extension.js",
+	"scripts": {
+		"test": "node test/reword.test.js"
+	},
 	"l10n": "./l10n",
+	"extensionDependencies": [
+		"vscode.git"
+	],
 	"enabledApiProposals": [
 		"contribSourceControlHistoryItemMenu"
 	],
@@ -29,16 +47,42 @@
 	"contributes": {
 		"commands": [
 			{
+				"command": "amendAnyCommit.pick",
+				"title": "%command.pick%",
+				"category": "Git",
+				"icon": "$(edit)"
+			},
+			{
 				"command": "amendAnyCommit.amend",
-				"title": "%command.reword%",
+				"title": "%command.amend%",
+				"category": "Git"
+			},
+			{
+				"command": "amendAnyCommit.amendFromTimeline",
+				"title": "%command.amend%",
 				"category": "Git"
 			}
 		],
 		"menus": {
 			"commandPalette": [
 				{
+					"command": "amendAnyCommit.pick",
+					"when": "config.git.enabled && !git.missing && gitOpenRepositoryCount != 0"
+				},
+				{
 					"command": "amendAnyCommit.amend",
 					"when": "false"
+				},
+				{
+					"command": "amendAnyCommit.amendFromTimeline",
+					"when": "false"
+				}
+			],
+			"scm/title": [
+				{
+					"command": "amendAnyCommit.pick",
+					"when": "scmProvider == git",
+					"group": "3_commit@99"
 				}
 			],
 			"scm/historyItem/context": [
@@ -46,6 +90,13 @@
 					"command": "amendAnyCommit.amend",
 					"when": "scmProvider == git && !listMultiSelection",
 					"group": "4_modify@2"
+				}
+			],
+			"timeline/item/context": [
+				{
+					"command": "amendAnyCommit.amendFromTimeline",
+					"when": "config.git.enabled && !git.missing && timelineItem =~ /git:(file|folder|workspace):commit\\b/ && !listMultiSelection",
+					"group": "4_modify@1"
 				}
 			]
 		}
