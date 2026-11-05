@@ -55,4 +55,4 @@ code --install-extension amend-any-commit-<version>.vsix
 python3 tools/draw-icon.py icon.png       # redraws the icon (needs Pillow)
 ```
 
-Pushing a tag like `v0.5.0` publishes to the VS Code Marketplace and Open VSX (see `.github/workflows/release.yml`).
+Pushing a tag like `v0.5.0` publishes to the VS Code Marketplace (Trusted Publishing, no token) and Open VSX (`OVSX_PAT` secret), see `.github/workflows/release.yml`.
