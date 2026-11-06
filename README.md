@@ -30,7 +30,7 @@ Pick a line, edit it, press Enter: you are back in the list, on **Apply**. Press
 
 ## Commits already pushed
 
-Changing a pushed commit rewrites history, so you need a force push afterwards. When the commit is already pushed, a **Force push after editing** checkbox appears in the list (pick it to tick or untick it):
+Changing a pushed commit rewrites history, so you need a force push afterwards. When the commit is already pushed, a **Force push after editing** checkbox in the list is active (pick it to tick or untick it). Otherwise it is greyed out, with the reason: the commit isn't pushed yet, or the branch has no upstream.
 
 - **Ticked**: right after the edit, the branch is pushed with `--force-with-lease`. The push only goes through if the remote has not changed since you opened the list, so you never erase someone else's work. Your choice is remembered.
 - **Unticked**: a warning reminds you that you will have to force push yourself.

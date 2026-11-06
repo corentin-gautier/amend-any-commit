@@ -30,5 +30,7 @@
 	"Now": "Maintenant",
 	"$(check) Commit edited and force pushed": "$(check) Commit modifié et push forcé",
 	"The commit is edited, but the force push failed: {0}": "Le commit est modifié, mais le push forcé a échoué : {0}",
-	"Choose the commit to edit": "Choisissez le commit à modifier"
+	"Choose the commit to edit": "Choisissez le commit à modifier",
+	"Not available: this commit is not pushed yet, nothing to force push.": "Indisponible : ce commit n'est pas encore poussé, il n'y a rien à forcer.",
+	"Not available: this branch has no upstream to push to.": "Indisponible : cette branche n'a pas d'upstream vers lequel pousser."
 }

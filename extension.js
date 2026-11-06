@@ -58,8 +58,8 @@ function askValue({ title, value, prompt, validate = () => undefined, buttons = 
 }
 
 // Shows the list of what can be edited and resolves with the item picked, or undefined when cancelled.
-// Picking the force push item toggles it in place instead.
-function pickField(title, items, active, toggleItem) {
+// Picking an item with `toggle` flips it in place instead; picking an `inert` item does nothing.
+function pickField(title, items, active) {
 	return new Promise(resolve => {
 		const pick = vscode.window.createQuickPick();
 		pick.title = title;
@@ -70,13 +70,13 @@ function pickField(title, items, active, toggleItem) {
 		let result;
 		pick.onDidAccept(() => {
 			const [item] = pick.selectedItems;
-			if (!item) {
+			if (!item || item.inert) {
 				return;
 			}
-			if (item.id === toggleItem) {
+			if (item.toggle) {
 				item.toggle();
 				pick.items = items();
-				pick.activeItems = pick.items.filter(other => other.id === toggleItem);
+				pick.activeItems = pick.items.filter(other => other.id === item.id);
 				return;
 			}
 			result = item;
@@ -111,22 +111,29 @@ async function askEdit(cwd, info, forcePushDefault) {
 		{ id: 'description', label: `$(note) ${vscode.l10n.t('Description')}`, description: preview(state.description) },
 		{ id: 'author', label: `$(person) ${vscode.l10n.t('Author')}`, description: state.author },
 		{ id: 'date', label: `$(calendar) ${vscode.l10n.t('Date')}`, description: state.date },
-		...info.pushed ? [
-			{ label: '', kind: vscode.QuickPickItemKind.Separator },
-			{
-				id: 'forcePush',
-				label: `${state.forcePush ? '☑' : '☐'} ${vscode.l10n.t('Force push after editing')}`,
-				detail: vscode.l10n.t('git push --force-with-lease: only if nobody pushed in the meantime'),
-				toggle: () => { state.forcePush = !state.forcePush; },
-			},
-		] : [],
+		{ label: '', kind: vscode.QuickPickItemKind.Separator },
+		info.pushed ? {
+			id: 'forcePush',
+			label: `${state.forcePush ? '☑' : '☐'} ${vscode.l10n.t('Force push after editing')}`,
+			detail: vscode.l10n.t('git push --force-with-lease: only if nobody pushed in the meantime'),
+			toggle: () => { state.forcePush = !state.forcePush; },
+		} : {
+			// Quick picks have no disabled items: the text goes in the description, which is shown dimmed.
+			id: 'forcePush',
+			label: '☐',
+			description: vscode.l10n.t('Force push after editing'),
+			detail: info.upstream
+				? vscode.l10n.t('Not available: this commit is not pushed yet, nothing to force push.')
+				: vscode.l10n.t('Not available: this branch has no upstream to push to.'),
+			inert: true,
+		},
 		{ label: '', kind: vscode.QuickPickItemKind.Separator },
 		{ id: 'apply', label: `$(check) ${vscode.l10n.t('Apply')}` },
 	];
 
 	let active = 'subject';
 	for (;;) {
-		const item = await pickField(title, items, active, info.pushed ? 'forcePush' : undefined);
+		const item = await pickField(title, items, active);
 		if (!item) {
 			return undefined;
 		}
