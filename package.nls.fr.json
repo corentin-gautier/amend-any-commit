@@ -1,5 +1,5 @@
 {
-	"description": "Modifier (amend) le message de n'importe quel commit, pas seulement le dernier : clic droit dans le graphe du contrôle de code source ou la chronologie, ou depuis la palette de commandes. Push forcé dans la foulée si besoin.",
-	"command.pick": "Modifier le message d'un commit...",
-	"command.amend": "Modifier le message du commit..."
+	"description": "Modifier (amend) n'importe quel commit, pas seulement le dernier : son message, sa description, son auteur et sa date. Clic droit dans le graphe du contrôle de code source ou la chronologie, ou depuis la palette de commandes. Push forcé dans la foulée si besoin.",
+	"command.pick": "Modifier un commit...",
+	"command.amend": "Modifier le commit..."
 }

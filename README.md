@@ -1,6 +1,6 @@
 # Amend Any Commit
 
-`git commit --amend` only fixes the last commit. This extension lets you fix the message of **any** commit on your branch, in two clicks, without an interactive rebase.
+`git commit --amend` only fixes the last commit. This extension lets you fix **any** commit on your branch (message, description, author, date), in two clicks, without an interactive rebase.
 
 I made it because I often notice a typo three commits too late, and Git Graph had no way to fix it.
 
@@ -8,26 +8,32 @@ I made it because I often notice a typo three commits too late, and Git Graph ha
 
 Pick the commit from one of these places:
 
-- **Source Control Graph**: right-click a commit > **Edit Commit Message...** (see [the note below](#source-control-graph-menu)).
-- **Timeline** (file history, under the Explorer): right-click a commit > **Edit Commit Message...**
-- **Command Palette**: **Git: Edit a Commit Message...**, then choose the commit.
-- **Source Control** view: **...** menu > **Edit a Commit Message...**
+- **Source Control Graph**: right-click a commit > **Edit Commit...** (see [the note below](#source-control-graph-menu)).
+- **Timeline** (file history, under the Explorer): right-click a commit > **Edit Commit...**
+- **Command Palette**: **Git: Edit a Commit...**, then choose the commit.
+- **Source Control** view: **...** menu > **Edit a Commit...**
 
-Type the new message and press Enter. That's it.
+A list opens with what you can change:
+
+- **Subject**: the first line of the message.
+- **Description**: the rest of the message. The box holds one line, so `⏎` stands for a line break (a button adds one).
+- **Author**: `Name <email>`. A button fills in your own Git identity.
+- **Date**: the author date, `YYYY-MM-DD HH:MM:SS +HHMM`. A button sets it to now.
+
+Pick a line, edit it, press Enter: you are back in the list, on **Apply**. Press Enter again and that's it.
 
 ## What it does
 
 - The last commit is amended. An older commit is rewritten, then the commits after it are replayed on top. They keep the same content, so there is never a conflict.
-- Author and date are kept.
-- The input box edits the first line of the message. The description below it is kept as is.
+- What you don't change is kept as is: content, author, date.
 - It refuses when it can't do the job safely: uncommitted changes, a rebase or merge in progress, or a merge commit in the way.
 
 ## Commits already pushed
 
-Changing a pushed commit rewrites history, so you need a force push afterwards. When the commit is already pushed, a **force push** toggle appears in the input box:
+Changing a pushed commit rewrites history, so you need a force push afterwards. When the commit is already pushed, a **Force push after editing** checkbox appears in the list (pick it to tick or untick it):
 
-- **On**: right after the edit, the branch is pushed with `--force-with-lease`. The push only goes through if the remote has not changed since you opened the box, so you never erase someone else's work. Your choice is remembered.
-- **Off**: a warning reminds you that you will have to force push yourself.
+- **Ticked**: right after the edit, the branch is pushed with `--force-with-lease`. The push only goes through if the remote has not changed since you opened the list, so you never erase someone else's work. Your choice is remembered.
+- **Unticked**: a warning reminds you that you will have to force push yourself.
 
 ## Source Control Graph menu
 

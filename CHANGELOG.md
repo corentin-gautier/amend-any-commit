@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Edit the description, the author and the author date too, not just the subject: the input box is now a list of the fields.
+- Force push is a checkbox with a label in that list, instead of an icon toggle.
+- Commands renamed to **Edit Commit...** and **Edit a Commit...**
+
 ## 0.5.0
 
 First release.

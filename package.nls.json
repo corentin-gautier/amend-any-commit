@@ -1,5 +1,5 @@
 {
-	"description": "Edit (amend) the message of any commit, not just the last one: right-click it in the Source Control Graph or the Timeline, or pick it from the Command Palette. Force push in the same step if needed.",
-	"command.pick": "Edit a Commit Message...",
-	"command.amend": "Edit Commit Message..."
+	"description": "Edit (amend) any commit, not just the last one: its message, description, author and date. Right-click it in the Source Control Graph or the Timeline, or pick it from the Command Palette. Force push in the same step if needed.",
+	"command.pick": "Edit a Commit...",
+	"command.amend": "Edit Commit..."
 }

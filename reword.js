@@ -55,6 +55,9 @@ async function inspect(cwd, commit) {
 		throw new RewordError('merges');
 	}
 	const message = await git(cwd, ['log', '-1', '--format=%B', sha]);
+	// The raw date keeps the exact timestamp; the ISO one is what the user reads and edits.
+	const [name, email, date, isoDate] = (await git(cwd, ['log', '-1', '--format=%an%x00%ae%x00%ad%x00%ai', '--date=raw', sha])).split('\0');
+	const author = { name, email, date, isoDate };
 	// Rewriting a commit the upstream already has means a force push afterwards.
 	let pushed = false;
 	let upstream;
@@ -67,7 +70,7 @@ async function inspect(cwd, commit) {
 		};
 		pushed = await succeeds(cwd, ['merge-base', '--is-ancestor', sha, upstream.sha]);
 	}
-	return { sha, head, parents, message, pushed, upstream };
+	return { sha, head, parents, message, author, pushed, upstream };
 }
 
 // Pushes the rewritten branch, but only if the remote still points where it did before the reword,
@@ -77,19 +80,19 @@ async function forcePush(cwd, info) {
 	await git(cwd, ['push', '--porcelain', `--force-with-lease=${ref}:${sha}`, remote, `HEAD:${ref}`]);
 }
 
-// Replaces the message of `info.sha` (from inspect) and replays the commits after it.
-async function reword(cwd, info, message) {
+// Replaces the message and author of `info.sha` (from inspect) and replays the commits after it.
+// `author` is { name, email, date }, the date in any format git accepts; it defaults to the current author.
+async function reword(cwd, info, message, author = info.author) {
 	const { sha, head, parents } = info;
-	// The new commit keeps the tree, parents and author of the old one; only the message changes.
-	const author = await git(cwd, ['log', '-1', '--format=%an%x00%ae%x00%ad', '--date=raw', sha]);
-	const [name, email, date] = author.split('\0');
+	// The new commit keeps the tree and parents of the old one; only the message and author can change.
+	const { name, email, date } = author;
 	const args = ['commit-tree', `${sha}^{tree}`, ...parents.flatMap(parent => ['-p', parent]), '-F', '-'];
 	const rewritten = await git(cwd, args, {
 		input: message.endsWith('\n') ? message : `${message}\n`,
 		env: { GIT_AUTHOR_NAME: name, GIT_AUTHOR_EMAIL: email, GIT_AUTHOR_DATE: date },
 	});
 	if (sha === head) {
-		await git(cwd, ['update-ref', '-m', 'reword: change commit message', 'HEAD', rewritten, head]);
+		await git(cwd, ['update-ref', '-m', 'reword: edit commit', 'HEAD', rewritten, head]);
 	} else {
 		// Same tree as the old commit, so replaying the later commits onto it cannot conflict.
 		await git(cwd, ['rebase', '--no-autosquash', '--reapply-cherry-picks', '--onto', rewritten, sha], {
@@ -97,6 +100,13 @@ async function reword(cwd, info, message) {
 		});
 	}
 	return rewritten;
+}
+
+// The identity git would use for a new commit in this repository (user.name, user.email), if set.
+async function identity(cwd) {
+	const name = await git(cwd, ['config', 'user.name']).catch(() => '');
+	const email = await git(cwd, ['config', 'user.email']).catch(() => '');
+	return name && email ? { name, email } : undefined;
 }
 
 function repositoryRoot(dir) {
@@ -118,4 +128,4 @@ async function listCommits(cwd, limit = 200) {
 	return commits;
 }
 
-module.exports = { inspect, reword, forcePush, repositoryRoot, listCommits, RewordError };
+module.exports = { inspect, reword, forcePush, identity, repositoryRoot, listCommits, RewordError };

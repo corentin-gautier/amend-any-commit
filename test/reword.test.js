@@ -1,10 +1,10 @@
 // Exercises reword.js on throwaway repos: HEAD, middle, root, dirty tree, merges, pushed detection,
-// force push, commit listing. Run with `npm test`.
+// author edits, force push, commit listing. Run with `npm test`.
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
-const { inspect, reword, forcePush, repositoryRoot, listCommits } = require('../reword.js');
+const { inspect, reword, forcePush, identity, repositoryRoot, listCommits } = require('../reword.js');
 
 const base = fs.mkdtempSync(path.join(require('os').tmpdir(), 'amend-any-commit-'));
 const sh = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
@@ -49,6 +49,16 @@ const subjects = dir => sh(dir, 'log', '--format=%s').split('\n');
 	info = await inspect(dir, 'HEAD~2');
 	await reword(dir, info, 'new 1');
 	assert.deepStrictEqual(subjects(dir), ['commit 3', 'commit 2', 'new 1']);
+
+	// Author and date changed, later commits keep theirs
+	dir = repo('author');
+	info = await inspect(dir, 'HEAD~1');
+	assert.deepStrictEqual([info.author.name, info.author.email], ['Test', 't@example.com']);
+	assert.match(info.author.isoDate, /^2020-01-02 10:00:00 [+-]\d{4}$/);
+	await reword(dir, info, 'commit 2\n\nnew body', { name: 'Someone', email: 's@example.com', date: '2021-05-06 07:08:09 +0200' });
+	assert.strictEqual(sh(dir, 'log', '-1', '--format=%an <%ae> %ai%n%B', 'HEAD~1'), 'Someone <s@example.com> 2021-05-06 07:08:09 +0200\ncommit 2\n\nnew body');
+	assert.strictEqual(sh(dir, 'log', '-1', '--format=%an %ad', '--date=short', 'HEAD'), 'Test 2020-01-03');
+	assert.deepStrictEqual(await identity(dir), { name: 'Test', email: 't@example.com' });
 
 	// Dirty tree refused
 	dir = repo('dirty');

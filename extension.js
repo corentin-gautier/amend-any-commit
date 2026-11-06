@@ -1,6 +1,6 @@
 const vscode = require('vscode');
 const path = require('path');
-const { inspect, reword, forcePush, repositoryRoot, listCommits, RewordError } = require('./reword');
+const { inspect, reword, forcePush, identity, repositoryRoot, listCommits, RewordError } = require('./reword');
 
 const FORCE_PUSH_KEY = 'forcePush';
 
@@ -16,33 +16,37 @@ function errorText(error) {
 	return error.stderr || error.message;
 }
 
-// Asks for the new subject. For a pushed commit, a toggle in the field chooses whether to force push
-// right after. Resolves with { subject, forcePush }, or undefined when cancelled.
-function askSubject(info, subject, hasBody, forcePushDefault) {
+// The description goes through a one-line input box, so its line breaks are shown as this sign.
+const NEWLINE = '⏎';
+const DATE_FORMAT = /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2})?( ?[+-]\d{2}:?\d{2}|Z)?$/;
+const AUTHOR_FORMAT = /^([^<>]+?)\s*<([^<>\s]+)>$/;
+
+// Shows one input box and resolves with its value, or undefined when cancelled.
+// `validate` returns an error message or undefined; `buttons` are { button, apply(value) => newValue }.
+function askValue({ title, value, prompt, validate = () => undefined, buttons = [] }) {
 	return new Promise(resolve => {
 		const input = vscode.window.createInputBox();
-		input.title = vscode.l10n.t('Edit Commit Message ({0})', info.sha.slice(0, 7));
-		input.value = subject;
-		input.valueSelection = [0, subject.length];
-		input.prompt = hasBody ? vscode.l10n.t('The commit description is kept.') : undefined;
-		const toggle = {
-			iconPath: new vscode.ThemeIcon('repo-force-push'),
-			tooltip: vscode.l10n.t('Force push after editing (git push --force-with-lease)'),
-			location: vscode.QuickInputButtonLocation.Input,
-			toggle: { checked: forcePushDefault },
-		};
-		if (info.pushed) {
-			input.buttons = [toggle];
-		}
+		input.title = title;
+		input.value = value;
+		input.valueSelection = [0, value.length];
+		input.prompt = prompt;
+		input.buttons = buttons.map(entry => entry.button);
 		let result;
 		input.onDidChangeValue(value => {
-			input.validationMessage = value.trim() ? undefined : vscode.l10n.t('The message cannot be empty.');
+			input.validationMessage = validate(value);
+		});
+		input.onDidTriggerButton(button => {
+			const entry = buttons.find(entry => entry.button === button);
+			if (entry) {
+				input.value = entry.apply(input.value);
+				input.validationMessage = validate(input.value);
+			}
 		});
 		input.onDidAccept(() => {
-			if (!input.value.trim()) {
+			if (validate(input.value)) {
 				return;
 			}
-			result = { subject: input.value.trim(), forcePush: info.pushed && toggle.toggle.checked };
+			result = input.value;
 			input.hide();
 		});
 		input.onDidHide(() => {
@@ -53,6 +57,160 @@ function askSubject(info, subject, hasBody, forcePushDefault) {
 	});
 }
 
+// Shows the list of what can be edited and resolves with the item picked, or undefined when cancelled.
+// Picking the force push item toggles it in place instead.
+function pickField(title, items, active, toggleItem) {
+	return new Promise(resolve => {
+		const pick = vscode.window.createQuickPick();
+		pick.title = title;
+		pick.placeholder = vscode.l10n.t('Choose what to edit, then Apply');
+		pick.matchOnDescription = true;
+		pick.items = items();
+		pick.activeItems = pick.items.filter(item => item.id === active);
+		let result;
+		pick.onDidAccept(() => {
+			const [item] = pick.selectedItems;
+			if (!item) {
+				return;
+			}
+			if (item.id === toggleItem) {
+				item.toggle();
+				pick.items = items();
+				pick.activeItems = pick.items.filter(other => other.id === toggleItem);
+				return;
+			}
+			result = item;
+			pick.hide();
+		});
+		pick.onDidHide(() => {
+			pick.dispose();
+			resolve(result);
+		});
+		pick.show();
+	});
+}
+
+const oneLine = text => text.replace(/\n/g, NEWLINE);
+const preview = text => text.trim() ? oneLine(text.trim()) : vscode.l10n.t('(none)');
+
+// Lets the user edit the subject, description, author and date of the commit, and choose whether to force
+// push a commit already pushed. Resolves with { message, author, forcePush }, or undefined when cancelled.
+async function askEdit(cwd, info, forcePushDefault) {
+	const [subject, ...rest] = info.message.split('\n');
+	const state = {
+		subject,
+		// The blank line after the subject is implied; the description is what follows it.
+		description: rest.join('\n').replace(/^\n+/, ''),
+		author: `${info.author.name} <${info.author.email}>`,
+		date: info.author.isoDate,
+		forcePush: forcePushDefault,
+	};
+	const title = vscode.l10n.t('Edit Commit ({0})', info.sha.slice(0, 7));
+	const items = () => [
+		{ id: 'subject', label: `$(edit) ${vscode.l10n.t('Subject')}`, description: state.subject },
+		{ id: 'description', label: `$(note) ${vscode.l10n.t('Description')}`, description: preview(state.description) },
+		{ id: 'author', label: `$(person) ${vscode.l10n.t('Author')}`, description: state.author },
+		{ id: 'date', label: `$(calendar) ${vscode.l10n.t('Date')}`, description: state.date },
+		...info.pushed ? [
+			{ label: '', kind: vscode.QuickPickItemKind.Separator },
+			{
+				id: 'forcePush',
+				label: `${state.forcePush ? '☑' : '☐'} ${vscode.l10n.t('Force push after editing')}`,
+				detail: vscode.l10n.t('git push --force-with-lease: only if nobody pushed in the meantime'),
+				toggle: () => { state.forcePush = !state.forcePush; },
+			},
+		] : [],
+		{ label: '', kind: vscode.QuickPickItemKind.Separator },
+		{ id: 'apply', label: `$(check) ${vscode.l10n.t('Apply')}` },
+	];
+
+	let active = 'subject';
+	for (;;) {
+		const item = await pickField(title, items, active, info.pushed ? 'forcePush' : undefined);
+		if (!item) {
+			return undefined;
+		}
+		if (item.id === 'apply') {
+			break;
+		}
+		const value = await editField(cwd, item.id, state, title);
+		if (value !== undefined) {
+			state[item.id] = value;
+		}
+		// Back in the list, Enter applies right away.
+		active = value !== undefined ? 'apply' : item.id;
+	}
+
+	const description = state.description.trim();
+	const [, name, email] = state.author.match(AUTHOR_FORMAT);
+	return {
+		message: description ? `${state.subject}\n\n${description}` : state.subject,
+		// The untouched date keeps its exact original value.
+		author: { name, email, date: state.date === info.author.isoDate ? info.author.date : state.date },
+		forcePush: info.pushed && state.forcePush,
+	};
+}
+
+// Asks for a new value of one field; resolves with it, or undefined when cancelled.
+async function editField(cwd, field, state, title) {
+	switch (field) {
+		case 'subject':
+			return (await askValue({
+				title: `${title}: ${vscode.l10n.t('Subject')}`,
+				value: state.subject,
+				validate: value => value.trim() ? undefined : vscode.l10n.t('The subject cannot be empty.'),
+			}))?.trim();
+		case 'description': {
+			const value = await askValue({
+				title: `${title}: ${vscode.l10n.t('Description')}`,
+				value: oneLine(state.description),
+				prompt: vscode.l10n.t('{0} marks a line break. Leave empty for no description.', NEWLINE),
+				buttons: [{
+					button: { iconPath: new vscode.ThemeIcon('newline'), tooltip: vscode.l10n.t('Add a line break') },
+					apply: value => value + NEWLINE,
+				}],
+			});
+			return value?.split(NEWLINE).join('\n');
+		}
+		case 'author': {
+			const mine = await identity(cwd);
+			return (await askValue({
+				title: `${title}: ${vscode.l10n.t('Author')}`,
+				value: state.author,
+				prompt: vscode.l10n.t('Name <email>'),
+				validate: value => AUTHOR_FORMAT.test(value.trim()) ? undefined : vscode.l10n.t('Write it as: Name <email>'),
+				buttons: mine ? [{
+					button: { iconPath: new vscode.ThemeIcon('account'), tooltip: vscode.l10n.t('Use my identity ({0})', `${mine.name} <${mine.email}>`) },
+					apply: () => `${mine.name} <${mine.email}>`,
+				}] : [],
+			}))?.trim();
+		}
+		case 'date':
+			return (await askValue({
+				title: `${title}: ${vscode.l10n.t('Date')}`,
+				value: state.date,
+				prompt: vscode.l10n.t('YYYY-MM-DD HH:MM:SS +HHMM (time zone optional)'),
+				validate: value => DATE_FORMAT.test(value.trim()) && !Number.isNaN(Date.parse(value.trim().replace(' ', 'T').replace(/ ?([+-]\d{2}):?(\d{2})$/, '$1:$2')))
+					? undefined : vscode.l10n.t('Write it as: YYYY-MM-DD HH:MM:SS +HHMM'),
+				buttons: [{
+					button: { iconPath: new vscode.ThemeIcon('clock'), tooltip: vscode.l10n.t('Now') },
+					apply: () => now(),
+				}],
+			}))?.trim();
+	}
+	return undefined;
+}
+
+// The current local time, in the same format git shows author dates (%ai).
+function now() {
+	const date = new Date();
+	const pad = n => String(Math.abs(n)).padStart(2, '0');
+	const offset = -date.getTimezoneOffset();
+	return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} `
+		+ `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())} `
+		+ `${offset < 0 ? '-' : '+'}${pad(Math.trunc(offset / 60))}${pad(offset % 60)}`;
+}
+
 async function amendCommit(context, cwd, commit) {
 	if (!cwd || !commit) {
 		return;
@@ -61,19 +219,23 @@ async function amendCommit(context, cwd, commit) {
 	try {
 		info = await inspect(cwd, commit);
 	} catch (error) {
-		vscode.window.showErrorMessage(vscode.l10n.t('Cannot edit the message: {0}', errorText(error)));
+		vscode.window.showErrorMessage(vscode.l10n.t('Cannot edit the commit: {0}', errorText(error)));
 		return;
 	}
 
-	// The input box only holds one line, so it edits the subject and keeps the body as is.
-	const [subject, ...rest] = info.message.split('\n');
-	const body = rest.join('\n');
-	const answer = await askSubject(info, subject, body.trim() !== '', context.globalState.get(FORCE_PUSH_KEY, false));
-	if (!answer || answer.subject === subject) {
+	const answer = await askEdit(cwd, info, context.globalState.get(FORCE_PUSH_KEY, false));
+	if (!answer) {
 		return;
 	}
 	if (info.pushed) {
 		context.globalState.update(FORCE_PUSH_KEY, answer.forcePush);
+	}
+	const unchanged = answer.message === info.message.trim()
+		&& answer.author.name === info.author.name
+		&& answer.author.email === info.author.email
+		&& answer.author.date === info.author.date;
+	if (unchanged) {
+		return;
 	}
 
 	// Ticking force push is already the informed choice; otherwise warn that the history diverges.
@@ -91,18 +253,18 @@ async function amendCommit(context, cwd, commit) {
 
 	try {
 		await vscode.window.withProgress({ location: vscode.ProgressLocation.SourceControl }, () =>
-			reword(cwd, info, [answer.subject, body].join('\n')));
+			reword(cwd, info, answer.message, answer.author));
 	} catch (error) {
-		vscode.window.showErrorMessage(vscode.l10n.t('Cannot edit the message: {0}', errorText(error)));
+		vscode.window.showErrorMessage(vscode.l10n.t('Cannot edit the commit: {0}', errorText(error)));
 		return;
 	}
 
 	if (answer.forcePush) {
 		try {
 			await vscode.window.withProgress({ location: vscode.ProgressLocation.SourceControl }, () => forcePush(cwd, info));
-			vscode.window.setStatusBarMessage(vscode.l10n.t('$(check) Message edited and force pushed'), 4000);
+			vscode.window.setStatusBarMessage(vscode.l10n.t('$(check) Commit edited and force pushed'), 4000);
 		} catch (error) {
-			vscode.window.showErrorMessage(vscode.l10n.t('The message is edited, but the force push failed: {0}', errorText(error)));
+			vscode.window.showErrorMessage(vscode.l10n.t('The commit is edited, but the force push failed: {0}', errorText(error)));
 		}
 	}
 }
@@ -153,7 +315,7 @@ async function pickCommit(cwd) {
 			detail: `${commit.author}, ${commit.date}`,
 			sha: commit.sha,
 		})),
-		{ placeHolder: vscode.l10n.t('Choose the commit whose message to edit'), matchOnDescription: true },
+		{ placeHolder: vscode.l10n.t('Choose the commit to edit'), matchOnDescription: true },
 	);
 	return choice?.sha;
 }
@@ -173,7 +335,7 @@ function activate(context) {
 			try {
 				cwd = await repositoryRoot(path.dirname(uri.fsPath));
 			} catch (error) {
-				vscode.window.showErrorMessage(vscode.l10n.t('Cannot edit the message: {0}', errorText(error)));
+				vscode.window.showErrorMessage(vscode.l10n.t('Cannot edit the commit: {0}', errorText(error)));
 				return;
 			}
 			await amendCommit(context, cwd, commit);
