@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.6.0
 
 - Edit the description, the author and the author date too, not just the subject: the input box is now a list of the fields.
 - Force push is a checkbox with a label in that list, instead of an icon toggle. It stays visible, greyed out with the reason, when there is nothing to force push.
