@@ -2,7 +2,7 @@
 	"name": "source-control-graph-plus",
 	"displayName": "Source Control Graph Plus",
 	"description": "%description%",
-	"version": "0.8.0",
+	"version": "0.8.1",
 	"publisher": "corentin-gautier",
 	"author": "Corentin Gautier",
 	"license": "MIT",
