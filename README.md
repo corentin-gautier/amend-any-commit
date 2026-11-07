@@ -108,7 +108,11 @@ Git, and VS Code's built-in Git extension (enabled by default). English and Fren
 npm test                                  # git logic on throwaway repositories
 npx @vscode/vsce package                  # builds source-control-graph-plus-<version>.vsix
 code --install-extension source-control-graph-plus-<version>.vsix
-python3 tools/draw-icon.py icon.png       # redraws the icon (needs Pillow)
+python3 tools/draw-icon.py icon.png       # redraws the icon (needs Pillow and VS Code's codicon font)
 ```
 
 Pushing a tag like `v0.8.0` publishes to the VS Code Marketplace (Trusted Publishing, no token) and Open VSX (`OVSX_PAT` secret), see `.github/workflows/release.yml`.
+
+## Credits
+
+The icon uses the Source Control icon from [Codicons](https://github.com/microsoft/vscode-codicons), © Microsoft, licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).

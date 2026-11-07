@@ -1,12 +1,17 @@
-# Draws the extension icon: a branch whose middle commit points to its message, which a pencil rewrites.
-# White shapes on a warm gradient, drawn at 4x then scaled down for smooth edges.
-# Usage: python3 tools/draw-icon.py icon.png  (needs Pillow)
-import math
+# Draws the extension icon: VS Code's own Source Control icon (the "source-control" codicon), so the
+# extension reads as part of that view, with a context menu next to it, since the extension adds to the right-click menu of that view, in white on a warm gradient.
+# The glyph comes from the codicon font that ships with VS Code. Codicons: (c) Microsoft, CC BY 4.0,
+# https://github.com/microsoft/vscode-codicons
+# Usage: python3 tools/draw-icon.py icon.png [path/to/codicon.ttf]  (needs Pillow)
 import sys
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
+FONT = sys.argv[2] if len(sys.argv) > 2 else '/Applications/Visual Studio Code.app/Contents/Resources/app/out/media/codicon.ttf'
+SOURCE_CONTROL = chr(0xEA68)
 S = 1024
 OUT = 256
+GLYPH = 470  # size of the icon inside the square
+SHIFT = (-215, 0)  # off center, to leave room for the menu
 
 # Background: rounded square with a diagonal gradient.
 start, end = (255, 138, 61), (226, 52, 110)
@@ -21,57 +26,37 @@ ImageDraw.Draw(shape).rounded_rectangle((32, 32, S - 32, S - 32), radius=210, fi
 img = Image.new('RGBA', (S, S), (0, 0, 0, 0))
 img.paste(bg, (0, 0), shape)
 
-# Everything white is drawn into one mask, so holes and gaps show the gradient through.
+# The glyph, scaled so its drawn shape (not the font's em box) is GLYPH wide or tall, then centered.
+probe = ImageFont.truetype(FONT, 1000)
+x0, y0, x1, y1 = probe.getbbox(SOURCE_CONTROL)
+font = ImageFont.truetype(FONT, round(1000 * GLYPH / max(x1 - x0, y1 - y0)))
+x0, y0, x1, y1 = font.getbbox(SOURCE_CONTROL)
 mask = Image.new('L', (S, S), 0)
+ImageDraw.Draw(mask).text(((S - (x1 - x0)) / 2 - x0 + SHIFT[0], (S - (y1 - y0)) / 2 - y0 + SHIFT[1]), SOURCE_CONTROL, font=font, fill=255)
+
+# Context menu: a card with three entries, the middle one highlighted under the mouse pointer,
+# cut away from the icon around it.
 d = ImageDraw.Draw(mask)
-ON, OFF = 255, 0
+left, top, right, bottom, gap = 500, 330, 872, 694, 30
+d.rounded_rectangle((left - gap, top - gap, right + gap, bottom + gap), radius=48 + gap, fill=0)
+d.rounded_rectangle((left, top, right, bottom), radius=48, fill=255)
+row = (bottom - top) / 3
+for i in range(3):
+	y = top + row * (i + 0.5)
+	if i == 1:
+		# Highlighted entry: a band cut out, with its label left white inside it.
+		d.rounded_rectangle((left + 24, y - 44, right - 24, y + 44), radius=24, fill=0)
+		d.rounded_rectangle((left + 60, y - 15, right - 150, y + 15), radius=15, fill=255)
+	else:
+		d.rounded_rectangle((left + 60, y - 15, right - 60 - (90 if i else 0), y + 15), radius=15, fill=0)
 
-def line(a, b, width, fill=ON):
-	d.line((a, b), fill=fill, width=width)
-	for x, y in (a, b):
-		d.ellipse((x - width / 2, y - width / 2, x + width / 2, y + width / 2), fill=fill)
-
-def circle(x, y, r, fill=ON):
-	d.ellipse((x - r, y - r, x + r, y + r), fill=fill)
-
-# Branch with two hollow commits and the solid one being amended.
-bx = 214
-line((bx, 256), (bx, 768), 48)
-for y in (256, 768):
-	circle(bx, y, 74)
-	circle(bx, y, 34, OFF)
-circle(bx, 512, 96)
-
-# Its message: a link to a solid card, its lines of text cut out.
-line((bx, 512), (380, 512), 44)
-d.rounded_rectangle((352, 336, 852, 688), radius=84, fill=ON)
-line((476, 450), (772, 450), 56, OFF)
-line((476, 572), (634, 572), 56, OFF)
-
-# Pencil writing the end of the second line, cut out from what lies under it.
-tip = (676, 590)
-angle = math.radians(-45)
-ux, uy = math.cos(angle), math.sin(angle)  # from the tip towards the eraser
-nx, ny = -uy, ux  # across the pencil
-half = 48
-length = 270
-
-def at(along, across):
-	return (tip[0] + ux * along + nx * across, tip[1] + uy * along + ny * across)
-
-def pencil(grow, fill):
-	cone = 96
-	d.polygon([at(-grow * 1.4, 0), at(cone, half + grow), at(cone, -half - grow)], fill=fill)
-	d.polygon([at(cone, half + grow), at(length, half + grow), at(length, -half - grow), at(cone, -half - grow)], fill=fill)
-	ex, ey = at(length, 0)
-	r = half + grow
-	d.ellipse((ex - r, ey - r, ex + r, ey + r), fill=fill)
-
-pencil(26, OFF)
-pencil(0, ON)
-# Gaps mark the wood cone and the eraser band.
-for along in (96, 214):
-	d.line((at(along, half + 4), at(along, -half - 4)), fill=OFF, width=18)
+# Mouse pointer on the highlighted entry, with a cut-out outline.
+def pointer(x, y, k):
+	return [(x + px * k, y + py * k) for px, py in ((0, 0), (0, 17), (4.2, 13), (7.2, 19.5), (10.2, 18.2), (7.4, 11.8), (12.6, 11.8))]
+tip = (742, 528)
+d.polygon(pointer(*tip, 10.5), fill=0)
+d.line(pointer(*tip, 10.5) + [tip], fill=0, width=36, joint='curve')
+d.polygon(pointer(*tip, 10.5), fill=255)
 
 white = Image.new('RGBA', (S, S), (255, 255, 255, 255))
 img.paste(white, (0, 0), Image.composite(mask, Image.new('L', (S, S), 0), shape))
