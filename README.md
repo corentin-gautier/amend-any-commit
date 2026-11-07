@@ -1,10 +1,13 @@
-# Amend Any Commit
+# Graph Commit Tools
 
-`git commit --amend` only fixes the last commit. This extension lets you fix **any** commit on your branch (message, description, author, date), in two clicks, without an interactive rebase.
+*Formerly Amend Any Commit.*
 
-I made it because I often notice a typo three commits too late, and Git Graph had no way to fix it.
+The commit actions I missed in VS Code's Source Control Graph, right-click away:
 
-## How to use it
+- **Edit any commit** on your branch, not just the last one: message, description, author, date. No interactive rebase. I often notice a typo three commits too late, and `git commit --amend` only fixes the last one.
+- **Reset the current branch to a commit**, soft, mixed or hard, as in Git Graph.
+
+## Edit a commit
 
 Pick the commit from one of these places:
 
@@ -22,13 +25,13 @@ A list opens with what you can change:
 
 Pick a line, edit it, press Enter: you are back in the list, on **Apply**. Press Enter again and that's it.
 
-## What it does
+### What it does
 
 - The last commit is amended. An older commit is rewritten, then the commits after it are replayed on top. They keep the same content, so there is never a conflict.
 - What you don't change is kept as is: content, author, date.
 - It refuses when it can't do the job safely: uncommitted changes, a rebase or merge in progress, or a merge commit in the way.
 
-## Commits already pushed
+### Commits already pushed
 
 Changing a pushed commit rewrites history, so you need a force push afterwards. When the commit is already pushed, a **Force push after editing** checkbox in the list is active (pick it to tick or untick it). Otherwise it is greyed out, with the reason: the commit isn't pushed yet, or the branch has no upstream.
 
@@ -46,7 +49,17 @@ The right-click menu of the Source Control Graph is still a *proposed* API in VS
    ```
 3. Quit and restart VS Code.
 
-The Timeline, the Command Palette and the Source Control menu work without this.
+Without it, editing a commit still works from the Timeline, the Command Palette and the Source Control menu; resetting the branch is only in the graph menu.
+
+## Reset the branch to a commit
+
+Like Git Graph: right-click a commit in the Source Control Graph > **Reset Current Branch to This Commit...** (this menu needs [the setting above](#source-control-graph-menu)), then choose the mode:
+
+- **Soft**: the branch moves, the changes of the commits left out stay staged.
+- **Mixed** (selected by default): same, but unstaged.
+- **Hard**: the branch moves and the working tree matches the commit. If you have uncommitted changes, you are asked first, since they are lost for good.
+
+It works backward and forward (to a commit of another branch, for instance). A commit left out is still in `git reflog` if you need it back.
 
 ## Requirements
 

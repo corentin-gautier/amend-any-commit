@@ -4,7 +4,7 @@ const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
-const { inspect, reword, forcePush, identity, repositoryRoot, listCommits } = require('../reword.js');
+const { inspect, reword, forcePush, resetTo, hasLocalChanges, currentBranch, identity, repositoryRoot, listCommits } = require('../reword.js');
 
 const base = fs.mkdtempSync(path.join(require('os').tmpdir(), 'amend-any-commit-'));
 const sh = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
@@ -116,6 +116,34 @@ const subjects = dir => sh(dir, 'log', '--format=%s').split('\n');
 	await reword(dir, info, 'new 3 again');
 	await assert.rejects(forcePush(dir, info));
 	assert.strictEqual(sh(remote, 'log', '-1', '--format=%s', 'main'), 'from someone else');
+
+	// Reset: soft keeps the changes staged, mixed unstaged, hard drops them
+	const status = dir => sh(dir, 'status', '--porcelain', '--untracked-files=no');
+	dir = repo('reset-soft');
+	assert.strictEqual(await currentBranch(dir), 'main');
+	await resetTo(dir, 'HEAD~2', 'soft');
+	assert.deepStrictEqual(subjects(dir), ['commit 1']);
+	assert.strictEqual(status(dir), 'A  f2\nA  f3');
+	assert.strictEqual(sh(dir, 'branch', '--show-current'), 'main');
+	dir = repo('reset-mixed');
+	await resetTo(dir, 'HEAD~1', 'mixed');
+	assert.deepStrictEqual(subjects(dir), ['commit 2', 'commit 1']);
+	assert.strictEqual(sh(dir, 'status', '--porcelain'), '?? f3');
+	dir = repo('reset-hard');
+	fs.writeFileSync(path.join(dir, 'f1'), 'changed\n');
+	assert.strictEqual(await hasLocalChanges(dir), true);
+	const target = sh(dir, 'rev-parse', 'HEAD~1');
+	assert.strictEqual(await resetTo(dir, target, 'hard'), target);
+	assert.strictEqual(await hasLocalChanges(dir), false);
+	assert.strictEqual(fs.readFileSync(path.join(dir, 'f1'), 'utf8'), '1\n');
+	assert.ok(!fs.existsSync(path.join(dir, 'f3')));
+	// Forward, to a commit the branch no longer has
+	await resetTo(dir, 'HEAD@{1}', 'hard');
+	assert.deepStrictEqual(subjects(dir), ['commit 3', 'commit 2', 'commit 1']);
+	await assert.rejects(resetTo(dir, 'HEAD', 'keep'));
+	await assert.rejects(resetTo(dir, 'nope', 'mixed'));
+	sh(dir, 'checkout', '-q', '--detach');
+	assert.strictEqual(await currentBranch(dir), undefined);
 
 	fs.rmSync(base, { recursive: true });
 	console.log('all good');

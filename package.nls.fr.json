@@ -1,5 +1,6 @@
 {
-	"description": "Modifier (amend) n'importe quel commit, pas seulement le dernier : son message, sa description, son auteur et sa date. Clic droit dans le graphe du contrôle de code source ou la chronologie, ou depuis la palette de commandes. Push forcé dans la foulée si besoin.",
+	"description": "Modifier n'importe quel commit, pas seulement le dernier (message, description, auteur, date), et réinitialiser la branche courante sur n'importe quel commit (soft, mixed ou hard). Clic droit sur un commit dans le graphe du contrôle de code source, ou depuis la chronologie et la palette de commandes.",
 	"command.pick": "Modifier un commit...",
-	"command.amend": "Modifier le commit..."
+	"command.amend": "Modifier le commit...",
+	"command.reset": "Réinitialiser la branche courante sur ce commit..."
 }

@@ -1,5 +1,6 @@
 {
-	"description": "Edit (amend) any commit, not just the last one: its message, description, author and date. Right-click it in the Source Control Graph or the Timeline, or pick it from the Command Palette. Force push in the same step if needed.",
+	"description": "Edit any commit, not just the last one (message, description, author, date), and reset the current branch to any commit (soft, mixed or hard). Right-click a commit in the Source Control Graph, or use the Timeline and the Command Palette.",
 	"command.pick": "Edit a Commit...",
-	"command.amend": "Edit Commit..."
+	"command.amend": "Edit Commit...",
+	"command.reset": "Reset Current Branch to This Commit..."
 }

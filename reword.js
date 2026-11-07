@@ -102,6 +102,30 @@ async function reword(cwd, info, message, author = info.author) {
 	return rewritten;
 }
 
+// Moves the current branch (or a detached HEAD) to `commit`, like `git reset --soft|--mixed|--hard`.
+async function resetTo(cwd, commit, mode) {
+	if (!['soft', 'mixed', 'hard'].includes(mode)) {
+		throw new Error(`Unknown reset mode: ${mode}`);
+	}
+	const sha = await resolveCommit(cwd, commit);
+	await git(cwd, ['reset', '--quiet', `--${mode}`, sha]);
+	return sha;
+}
+
+function resolveCommit(cwd, commit) {
+	return git(cwd, ['rev-parse', '--verify', `${commit}^{commit}`]);
+}
+
+// The checked out branch, or undefined on a detached HEAD.
+function currentBranch(cwd) {
+	return git(cwd, ['symbolic-ref', '--quiet', '--short', 'HEAD']).catch(() => undefined);
+}
+
+// Whether tracked files have changes, staged or not, that a hard reset would discard.
+async function hasLocalChanges(cwd) {
+	return await git(cwd, ['status', '--porcelain', '--untracked-files=no']) !== '';
+}
+
 // The identity git would use for a new commit in this repository (user.name, user.email), if set.
 async function identity(cwd) {
 	const name = await git(cwd, ['config', 'user.name']).catch(() => '');
@@ -128,4 +152,4 @@ async function listCommits(cwd, limit = 200) {
 	return commits;
 }
 
-module.exports = { inspect, reword, forcePush, identity, repositoryRoot, listCommits, RewordError };
+module.exports = { inspect, reword, forcePush, resetTo, hasLocalChanges, resolveCommit, currentBranch, identity, repositoryRoot, listCommits, RewordError };

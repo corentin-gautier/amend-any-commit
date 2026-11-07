@@ -1,6 +1,6 @@
 {
 	"name": "amend-any-commit",
-	"displayName": "Amend Any Commit",
+	"displayName": "Graph Commit Tools",
 	"description": "%description%",
 	"version": "0.6.0",
 	"publisher": "corentin-gautier",
@@ -30,7 +30,10 @@
 		"rebase",
 		"git",
 		"git graph",
-		"force push"
+		"force push",
+		"reset",
+		"reset branch",
+		"source control graph"
 	],
 	"main": "./extension.js",
 	"scripts": {
@@ -58,6 +61,11 @@
 				"category": "Git"
 			},
 			{
+				"command": "amendAnyCommit.reset",
+				"title": "%command.reset%",
+				"category": "Git"
+			},
+			{
 				"command": "amendAnyCommit.amendFromTimeline",
 				"title": "%command.amend%",
 				"category": "Git"
@@ -76,6 +84,10 @@
 				{
 					"command": "amendAnyCommit.amendFromTimeline",
 					"when": "false"
+				},
+				{
+					"command": "amendAnyCommit.reset",
+					"when": "false"
 				}
 			],
 			"scm/title": [
@@ -90,6 +102,11 @@
 					"command": "amendAnyCommit.amend",
 					"when": "scmProvider == git && !listMultiSelection",
 					"group": "4_modify@2"
+				},
+				{
+					"command": "amendAnyCommit.reset",
+					"when": "scmProvider == git && !listMultiSelection",
+					"group": "4_modify@3"
 				}
 			],
 			"timeline/item/context": [

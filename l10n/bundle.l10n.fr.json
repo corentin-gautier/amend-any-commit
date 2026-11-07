@@ -32,5 +32,15 @@
 	"The commit is edited, but the force push failed: {0}": "Le commit est modifié, mais le push forcé a échoué : {0}",
 	"Choose the commit to edit": "Choisissez le commit à modifier",
 	"Not available: this commit is not pushed yet, nothing to force push.": "Indisponible : ce commit n'est pas encore poussé, il n'y a rien à forcer.",
-	"Not available: this branch has no upstream to push to.": "Indisponible : cette branche n'a pas d'upstream vers lequel pousser."
+	"Not available: this branch has no upstream to push to.": "Indisponible : cette branche n'a pas d'upstream vers lequel pousser.",
+	"Cannot reset the branch: {0}": "Impossible de réinitialiser la branche : {0}",
+	"Keep all changes, staged": "Garder toutes les modifications, indexées",
+	"Keep all changes, unstaged": "Garder toutes les modifications, non indexées",
+	"Discard all changes": "Supprimer toutes les modifications",
+	"Reset {0} to {1}": "Réinitialiser {0} sur {1}",
+	"Reset HEAD to {0}": "Réinitialiser HEAD sur {0}",
+	"Choose the reset mode": "Choisissez le mode de réinitialisation",
+	"Reset Anyway": "Réinitialiser quand même",
+	"You have uncommitted changes": "Vous avez des modifications non commitées",
+	"A hard reset discards them for good.": "Un reset hard les supprime définitivement."
 }

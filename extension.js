@@ -1,6 +1,6 @@
 const vscode = require('vscode');
 const path = require('path');
-const { inspect, reword, forcePush, identity, repositoryRoot, listCommits, RewordError } = require('./reword');
+const { inspect, reword, forcePush, resetTo, hasLocalChanges, resolveCommit, currentBranch, identity, repositoryRoot, listCommits, RewordError } = require('./reword');
 
 const FORCE_PUSH_KEY = 'forcePush';
 
@@ -276,6 +276,53 @@ async function amendCommit(context, cwd, commit) {
 	}
 }
 
+// Resets the current branch to `commit`, after asking the mode (soft, mixed or hard) as Git Graph does.
+async function resetBranch(cwd, commit) {
+	if (!cwd || !commit) {
+		return;
+	}
+	const fail = error => vscode.window.showErrorMessage(vscode.l10n.t('Cannot reset the branch: {0}', errorText(error)));
+	let branch, short;
+	try {
+		short = (await resolveCommit(cwd, commit)).slice(0, 7);
+		branch = await currentBranch(cwd);
+	} catch (error) {
+		fail(error);
+		return;
+	}
+	const modes = [
+		{ mode: 'soft', label: '$(git-commit) Soft', description: '--soft', detail: vscode.l10n.t('Keep all changes, staged') },
+		{ mode: 'mixed', label: '$(diff) Mixed', description: '--mixed', detail: vscode.l10n.t('Keep all changes, unstaged') },
+		{ mode: 'hard', label: '$(warning) Hard', description: '--hard', detail: vscode.l10n.t('Discard all changes') },
+	];
+	const choice = await vscode.window.showQuickPick(modes, {
+		title: branch
+			? vscode.l10n.t('Reset {0} to {1}', branch, short)
+			: vscode.l10n.t('Reset HEAD to {0}', short),
+		placeHolder: vscode.l10n.t('Choose the reset mode'),
+		activeItem: modes[1],
+	});
+	if (!choice) {
+		return;
+	}
+	try {
+		if (choice.mode === 'hard' && await hasLocalChanges(cwd)) {
+			const proceed = vscode.l10n.t('Reset Anyway');
+			const answer = await vscode.window.showWarningMessage(
+				vscode.l10n.t('You have uncommitted changes'),
+				{ modal: true, detail: vscode.l10n.t('A hard reset discards them for good.') },
+				proceed,
+			);
+			if (answer !== proceed) {
+				return;
+			}
+		}
+		await vscode.window.withProgress({ location: vscode.ProgressLocation.SourceControl }, () => resetTo(cwd, commit, choice.mode));
+	} catch (error) {
+		fail(error);
+	}
+}
+
 // The open git repositories, from the built-in git extension.
 async function openRepositories() {
 	const extension = vscode.extensions.getExtension('vscode.git');
@@ -332,6 +379,8 @@ function activate(context) {
 		// Source Control Graph: (source control, history item).
 		vscode.commands.registerCommand('amendAnyCommit.amend', (sourceControl, historyItem) =>
 			amendCommit(context, sourceControl?.rootUri?.fsPath, historyItem?.id)),
+		vscode.commands.registerCommand('amendAnyCommit.reset', (sourceControl, historyItem) =>
+			resetBranch(sourceControl?.rootUri?.fsPath, historyItem?.id)),
 		// Timeline: (git timeline item, file uri). The item's ref is the commit hash.
 		vscode.commands.registerCommand('amendAnyCommit.amendFromTimeline', async (item, uri) => {
 			const commit = item?.ref ?? item?.id;
