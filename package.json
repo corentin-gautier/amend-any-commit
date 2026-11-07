@@ -2,7 +2,7 @@
 	"name": "amend-any-commit",
 	"displayName": "Graph Commit Tools",
 	"description": "%description%",
-	"version": "0.6.0",
+	"version": "0.7.0",
 	"publisher": "corentin-gautier",
 	"author": "Corentin Gautier",
 	"license": "MIT",

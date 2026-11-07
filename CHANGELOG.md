@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.7.0
 
 - Renamed **Graph Commit Tools** (formerly Amend Any Commit). Same extension ID, so updates keep coming.
 - **Reset Current Branch to This Commit...** in the right-click menu of the Source Control Graph, with the soft, mixed or hard mode to choose, as in Git Graph. A hard reset asks first when there are uncommitted changes.
