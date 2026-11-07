@@ -1,8 +1,9 @@
 # Changelog
 
-## Unreleased
+## 0.8.0
 
 - Renamed **Source Control Graph Plus**, with a new extension ID: `corentin-gautier.source-control-graph-plus`. Install it in place of Graph Commit Tools (`corentin-gautier.amend-any-commit`), and update the line in `argv.json` (see the README).
+- New icon: the Source Control icon of VS Code with the right-click menu this extension adds to it.
 - **Merge into Current Branch...** in the right-click menu of the Source Control Graph: merge commit, fast-forward or squash, as in Git Graph. On conflicts, an **Abort Merge** button.
 - **Rebase Current Branch on This Commit...** in the same menu, with a confirmation that warns when pushed commits get rewritten. On conflicts, an **Abort Rebase** button.
 - **Add Staged Changes to This Commit**: fold what is staged into an older commit, the commits after it replayed.
