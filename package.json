@@ -1,6 +1,6 @@
 {
-	"name": "amend-any-commit",
-	"displayName": "Graph Commit Tools",
+	"name": "source-control-graph-plus",
+	"displayName": "Source Control Graph Plus",
 	"description": "%description%",
 	"version": "0.7.0",
 	"publisher": "corentin-gautier",
@@ -9,12 +9,12 @@
 	"icon": "icon.png",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/corentin-gautier/amend-any-commit"
+		"url": "https://github.com/corentin-gautier/source-control-graph-plus"
 	},
 	"bugs": {
-		"url": "https://github.com/corentin-gautier/amend-any-commit/issues"
+		"url": "https://github.com/corentin-gautier/source-control-graph-plus/issues"
 	},
-	"homepage": "https://github.com/corentin-gautier/amend-any-commit#readme",
+	"homepage": "https://github.com/corentin-gautier/source-control-graph-plus#readme",
 	"engines": {
 		"vscode": "^1.100.0"
 	},
@@ -23,17 +23,27 @@
 		"Other"
 	],
 	"keywords": [
+		"git graph",
+		"source control graph",
+		"built-in",
+		"native",
+		"context menu",
+		"right-click",
+		"git",
 		"amend",
 		"reword",
-		"commit message",
 		"edit commit",
+		"fixup",
+		"squash",
+		"drop commit",
+		"revert",
+		"merge",
 		"rebase",
-		"git",
-		"git graph",
-		"force push",
 		"reset",
-		"reset branch",
-		"source control graph"
+		"rename branch",
+		"push",
+		"tag",
+		"force push"
 	],
 	"main": "./extension.js",
 	"scripts": {
@@ -50,23 +60,83 @@
 	"contributes": {
 		"commands": [
 			{
-				"command": "amendAnyCommit.pick",
+				"command": "sourceControlGraphPlus.pick",
 				"title": "%command.pick%",
 				"category": "Git",
 				"icon": "$(edit)"
 			},
 			{
-				"command": "amendAnyCommit.amend",
+				"command": "sourceControlGraphPlus.amend",
 				"title": "%command.amend%",
 				"category": "Git"
 			},
 			{
-				"command": "amendAnyCommit.reset",
+				"command": "sourceControlGraphPlus.reset",
 				"title": "%command.reset%",
 				"category": "Git"
 			},
 			{
-				"command": "amendAnyCommit.amendFromTimeline",
+				"command": "sourceControlGraphPlus.merge",
+				"title": "%command.merge%",
+				"category": "Git"
+			},
+			{
+				"command": "sourceControlGraphPlus.rebase",
+				"title": "%command.rebase%",
+				"category": "Git"
+			},
+			{
+				"command": "sourceControlGraphPlus.renameBranch",
+				"title": "%command.renameBranch%",
+				"category": "Git"
+			},
+			{
+				"command": "sourceControlGraphPlus.fixup",
+				"title": "%command.fixup%",
+				"category": "Git"
+			},
+			{
+				"command": "sourceControlGraphPlus.squash",
+				"title": "%command.squash%",
+				"category": "Git"
+			},
+			{
+				"command": "sourceControlGraphPlus.drop",
+				"title": "%command.drop%",
+				"category": "Git"
+			},
+			{
+				"command": "sourceControlGraphPlus.revert",
+				"title": "%command.revert%",
+				"category": "Git"
+			},
+			{
+				"command": "sourceControlGraphPlus.pushBranch",
+				"title": "%command.pushBranch%",
+				"category": "Git"
+			},
+			{
+				"command": "sourceControlGraphPlus.fetchBranch",
+				"title": "%command.fetchBranch%",
+				"category": "Git"
+			},
+			{
+				"command": "sourceControlGraphPlus.copyBranchName",
+				"title": "%command.copyBranchName%",
+				"category": "Git"
+			},
+			{
+				"command": "sourceControlGraphPlus.pushTag",
+				"title": "%command.pushTag%",
+				"category": "Git"
+			},
+			{
+				"command": "sourceControlGraphPlus.copyTagName",
+				"title": "%command.copyTagName%",
+				"category": "Git"
+			},
+			{
+				"command": "sourceControlGraphPlus.amendFromTimeline",
 				"title": "%command.amend%",
 				"category": "Git"
 			}
@@ -74,44 +144,154 @@
 		"menus": {
 			"commandPalette": [
 				{
-					"command": "amendAnyCommit.pick",
+					"command": "sourceControlGraphPlus.pick",
 					"when": "config.git.enabled && !git.missing && gitOpenRepositoryCount != 0"
 				},
 				{
-					"command": "amendAnyCommit.amend",
+					"command": "sourceControlGraphPlus.amend",
 					"when": "false"
 				},
 				{
-					"command": "amendAnyCommit.amendFromTimeline",
+					"command": "sourceControlGraphPlus.amendFromTimeline",
 					"when": "false"
 				},
 				{
-					"command": "amendAnyCommit.reset",
+					"command": "sourceControlGraphPlus.reset",
+					"when": "false"
+				},
+				{
+					"command": "sourceControlGraphPlus.merge",
+					"when": "false"
+				},
+				{
+					"command": "sourceControlGraphPlus.rebase",
+					"when": "false"
+				},
+				{
+					"command": "sourceControlGraphPlus.renameBranch",
+					"when": "false"
+				},
+				{
+					"command": "sourceControlGraphPlus.fixup",
+					"when": "false"
+				},
+				{
+					"command": "sourceControlGraphPlus.squash",
+					"when": "false"
+				},
+				{
+					"command": "sourceControlGraphPlus.drop",
+					"when": "false"
+				},
+				{
+					"command": "sourceControlGraphPlus.revert",
+					"when": "false"
+				},
+				{
+					"command": "sourceControlGraphPlus.pushBranch",
+					"when": "false"
+				},
+				{
+					"command": "sourceControlGraphPlus.fetchBranch",
+					"when": "false"
+				},
+				{
+					"command": "sourceControlGraphPlus.copyBranchName",
+					"when": "false"
+				},
+				{
+					"command": "sourceControlGraphPlus.pushTag",
+					"when": "false"
+				},
+				{
+					"command": "sourceControlGraphPlus.copyTagName",
 					"when": "false"
 				}
 			],
 			"scm/title": [
 				{
-					"command": "amendAnyCommit.pick",
+					"command": "sourceControlGraphPlus.pick",
 					"when": "scmProvider == git",
 					"group": "3_commit@99"
 				}
 			],
 			"scm/historyItem/context": [
 				{
-					"command": "amendAnyCommit.amend",
+					"command": "sourceControlGraphPlus.revert",
 					"when": "scmProvider == git && !listMultiSelection",
 					"group": "4_modify@2"
 				},
 				{
-					"command": "amendAnyCommit.reset",
-					"when": "scmProvider == git && !listMultiSelection",
+					"command": "sourceControlGraphPlus.merge",
+					"when": "scmProvider == git && !listMultiSelection && !scmHistoryItemHasCurrentHistoryItemRef",
 					"group": "4_modify@3"
+				},
+				{
+					"command": "sourceControlGraphPlus.rebase",
+					"when": "scmProvider == git && !listMultiSelection && !scmHistoryItemHasCurrentHistoryItemRef",
+					"group": "4_modify@4"
+				},
+				{
+					"command": "sourceControlGraphPlus.reset",
+					"when": "scmProvider == git && !listMultiSelection",
+					"group": "4_modify@5"
+				},
+				{
+					"command": "sourceControlGraphPlus.amend",
+					"when": "scmProvider == git && !listMultiSelection",
+					"group": "4_rewrite@1"
+				},
+				{
+					"command": "sourceControlGraphPlus.fixup",
+					"when": "scmProvider == git && !listMultiSelection",
+					"group": "4_rewrite@2"
+				},
+				{
+					"command": "sourceControlGraphPlus.squash",
+					"when": "scmProvider == git && !listMultiSelection && !scmHistoryItemHasCurrentHistoryItemRef",
+					"group": "4_rewrite@3"
+				},
+				{
+					"command": "sourceControlGraphPlus.drop",
+					"when": "scmProvider == git && !listMultiSelection",
+					"group": "4_rewrite@4"
+				}
+			],
+			"scm/historyItemRef/context": [
+				{
+					"command": "sourceControlGraphPlus.renameBranch",
+					"when": "scmProvider == git && scmHistoryItemRef =~ /^refs\\/heads\\//",
+					"group": "2_branch@3"
+				},
+				{
+					"command": "sourceControlGraphPlus.pushBranch",
+					"when": "scmProvider == git && scmHistoryItemRef =~ /^refs\\/heads\\//",
+					"group": "2_branch@4"
+				},
+				{
+					"command": "sourceControlGraphPlus.fetchBranch",
+					"when": "scmProvider == git && scmHistoryItemRef =~ /^refs\\/remotes\\//",
+					"group": "2_branch@5"
+				},
+				{
+					"command": "sourceControlGraphPlus.pushTag",
+					"when": "scmProvider == git && scmHistoryItemRef =~ /^refs\\/tags\\//",
+					"group": "3_tag@3"
+				},
+				{
+					"command": "sourceControlGraphPlus.copyBranchName",
+					"when": "scmProvider == git && scmHistoryItemRef =~ /^refs\\/heads\\/|^refs\\/remotes\\//",
+					"group": "9_copy@3"
+				},
+				{
+					"command": "sourceControlGraphPlus.copyTagName",
+					"when": "scmProvider == git && scmHistoryItemRef =~ /^refs\\/tags\\//",
+					"group": "9_copy@4"
 				}
 			],
 			"timeline/item/context": [
 				{
-					"command": "amendAnyCommit.amendFromTimeline",
+					"command": "sourceControlGraphPlus.amendFromTimeline",
 					"when": "config.git.enabled && !git.missing && timelineItem =~ /git:(file|folder|workspace):commit\\b/ && !listMultiSelection",
 					"group": "4_modify@1"
 				}

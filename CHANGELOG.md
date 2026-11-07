@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- Renamed **Source Control Graph Plus**, with a new extension ID: `corentin-gautier.source-control-graph-plus`. Install it in place of Graph Commit Tools (`corentin-gautier.amend-any-commit`), and update the line in `argv.json` (see the README).
+- **Merge into Current Branch...** in the right-click menu of the Source Control Graph: merge commit, fast-forward or squash, as in Git Graph. On conflicts, an **Abort Merge** button.
+- **Rebase Current Branch on This Commit...** in the same menu, with a confirmation that warns when pushed commits get rewritten. On conflicts, an **Abort Rebase** button.
+- **Add Staged Changes to This Commit**: fold what is staged into an older commit, the commits after it replayed.
+- **Squash Commits from Here to HEAD...**, **Drop Commit...** and **Revert Commit...** (with the parent to choose for a merge).
+- For the branches and tags of a commit: **Rename Branch...**, **Push Branch...** (optionally `--force-with-lease`), **Fetch into Local Branch...**, **Push Tag...**, **Copy Branch Name**, **Copy Tag Name**.
+- Merge, rebase and squash are hidden on the current commit, where they have nothing to do.
+
 ## 0.7.0
 
 - Renamed **Graph Commit Tools** (formerly Amend Any Commit). Same extension ID, so updates keep coming.

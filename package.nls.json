@@ -1,6 +1,18 @@
 {
-	"description": "Edit any commit, not just the last one (message, description, author, date), and reset the current branch to any commit (soft, mixed or hard). Right-click a commit in the Source Control Graph, or use the Timeline and the Command Palette.",
+	"description": "Adds the Git actions missing from VS Code's built-in Source Control Graph: edit, fixup, squash, drop and revert commits, merge, rebase, reset, and manage branches and tags. No extra view.",
 	"command.pick": "Edit a Commit...",
 	"command.amend": "Edit Commit...",
-	"command.reset": "Reset Current Branch to This Commit..."
+	"command.reset": "Reset Current Branch to This Commit...",
+	"command.merge": "Merge into Current Branch...",
+	"command.rebase": "Rebase Current Branch on This Commit...",
+	"command.renameBranch": "Rename Branch...",
+	"command.fixup": "Add Staged Changes to This Commit",
+	"command.squash": "Squash Commits from Here to HEAD...",
+	"command.drop": "Drop Commit...",
+	"command.revert": "Revert Commit...",
+	"command.pushBranch": "Push Branch...",
+	"command.fetchBranch": "Fetch into Local Branch...",
+	"command.copyBranchName": "Copy Branch Name",
+	"command.pushTag": "Push Tag...",
+	"command.copyTagName": "Copy Tag Name"
 }

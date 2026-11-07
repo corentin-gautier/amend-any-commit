@@ -1,4 +1,6 @@
 const { execFile } = require('child_process');
+const fs = require('fs');
+const path = require('path');
 
 // Runs git in the repository and resolves with its trimmed stdout.
 function git(cwd, args, { input, env } = {}) {
@@ -34,19 +36,18 @@ class RewordError extends Error {
 }
 
 // Everything the user needs to see before rewording, or a RewordError saying why it can't be done.
-async function inspect(cwd, commit) {
+// `allowDirty` skips the clean tree check, for operations that leave the working tree alone.
+async function inspect(cwd, commit, { allowDirty = false } = {}) {
 	const sha = await git(cwd, ['rev-parse', '--verify', `${commit}^{commit}`]);
 	const head = await git(cwd, ['rev-parse', 'HEAD']);
 	if (!await succeeds(cwd, ['merge-base', '--is-ancestor', sha, head])) {
 		throw new RewordError('notInHead');
 	}
-	const gitDir = await git(cwd, ['rev-parse', '--absolute-git-dir']);
-	const fs = require('fs');
-	if (['rebase-merge', 'rebase-apply', 'MERGE_HEAD', 'CHERRY_PICK_HEAD'].some(name => fs.existsSync(`${gitDir}/${name}`))) {
+	if (await operationInProgress(cwd)) {
 		throw new RewordError('operationInProgress');
 	}
 	// Untracked files are fine: the rebase replays the same trees, so it never writes over them.
-	if (await git(cwd, ['status', '--porcelain', '--untracked-files=no']) !== '') {
+	if (!allowDirty && await hasLocalChanges(cwd)) {
 		throw new RewordError('dirty');
 	}
 	const parents = (await git(cwd, ['rev-list', '--parents', '-n', '1', sha])).split(' ').slice(1);
@@ -112,6 +113,254 @@ async function resetTo(cwd, commit, mode) {
 	return sha;
 }
 
+// Which of these files exist in the git directory.
+async function gitDirHas(cwd, names) {
+	const gitDir = await git(cwd, ['rev-parse', '--absolute-git-dir']);
+	return names.filter(name => fs.existsSync(path.join(gitDir, name)));
+}
+
+async function operationInProgress(cwd) {
+	return (await gitDirHas(cwd, ['rebase-merge', 'rebase-apply', 'MERGE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD'])).length > 0;
+}
+
+const isAncestor = (cwd, ancestor, commit) => succeeds(cwd, ['merge-base', '--is-ancestor', ancestor, commit]);
+
+// What merging `commit` into HEAD means: the name to merge (a branch pointing at the commit, local first,
+// so the merge message names it; else the commit itself), whether there is anything to merge, and whether
+// the branch could just move forward.
+async function mergeInfo(cwd, commit) {
+	const sha = await resolveCommit(cwd, commit);
+	const head = await git(cwd, ['rev-parse', 'HEAD']);
+	const branch = await currentBranch(cwd);
+	const refs = (await git(cwd, ['for-each-ref', '--points-at', sha, '--format=%(refname)', 'refs/heads', 'refs/remotes']))
+		.split('\n').filter(ref => ref && !ref.endsWith('/HEAD') && ref !== `refs/heads/${branch}`);
+	const ref = refs.find(ref => ref.startsWith('refs/heads/')) ?? refs[0];
+	return {
+		sha,
+		target: ref ? ref.replace(/^refs\/(heads|remotes)\//, '') : sha,
+		upToDate: await isAncestor(cwd, sha, head),
+		canFastForward: await isAncestor(cwd, head, sha),
+	};
+}
+
+// Merges `target` into HEAD. `mode` is 'noff' (always a merge commit), 'ff' (fast-forward when possible)
+// or 'squash' (changes staged, nothing committed). Throws a RewordError 'conflicts' when the merge stopped on
+// conflicts, which are then left in the working tree to resolve.
+async function merge(cwd, target, mode) {
+	const flags = { noff: ['--no-ff'], ff: ['--ff'], squash: ['--squash'] }[mode];
+	if (!flags) {
+		throw new Error(`Unknown merge mode: ${mode}`);
+	}
+	if (await operationInProgress(cwd)) {
+		throw new RewordError('operationInProgress');
+	}
+	try {
+		await git(cwd, ['merge', '--no-edit', ...flags, target]);
+	} catch (error) {
+		if (await git(cwd, ['diff', '--name-only', '--diff-filter=U']).catch(() => '') !== '') {
+			throw new RewordError('conflicts');
+		}
+		throw error;
+	}
+}
+
+// What rebasing HEAD on `commit` means: how many commits are replayed, whether HEAD already sits on it,
+// and whether some of the replayed commits are already pushed (so a force push will be needed).
+async function rebaseInfo(cwd, commit) {
+	const sha = await resolveCommit(cwd, commit);
+	const base = await git(cwd, ['merge-base', sha, 'HEAD']);
+	const count = Number(await git(cwd, ['rev-list', '--count', `${base}..HEAD`]));
+	let pushed = false;
+	if (count > 0 && await succeeds(cwd, ['rev-parse', '--verify', '@{upstream}'])) {
+		const shared = await git(cwd, ['merge-base', 'HEAD', '@{upstream}']).catch(() => undefined);
+		pushed = !!shared && Number(await git(cwd, ['rev-list', '--count', `${base}..${shared}`])) > 0;
+	}
+	return { sha, count, upToDate: base === sha, pushed };
+}
+
+// Runs a rebase without any editor; a stop on conflicts becomes a RewordError 'conflicts'.
+async function runRebase(cwd, args) {
+	try {
+		await git(cwd, ['rebase', ...args], { env: { GIT_SEQUENCE_EDITOR: ':', GIT_EDITOR: ':' } });
+	} catch (error) {
+		if ((await gitDirHas(cwd, ['rebase-merge', 'rebase-apply'])).length > 0) {
+			throw new RewordError('conflicts');
+		}
+		throw error;
+	}
+}
+
+// Replays the commits of HEAD on top of `commit`, like `git rebase <commit>`. Throws a RewordError
+// 'conflicts' when the rebase stopped on conflicts: it is then in progress, to continue or abort.
+async function rebase(cwd, commit) {
+	if (await operationInProgress(cwd)) {
+		throw new RewordError('operationInProgress');
+	}
+	if (await hasLocalChanges(cwd)) {
+		throw new RewordError('dirty');
+	}
+	await runRebase(cwd, [await resolveCommit(cwd, commit)]);
+}
+
+async function hasStagedChanges(cwd) {
+	return !await succeeds(cwd, ['diff', '--cached', '--quiet']);
+}
+
+// Folds the staged changes into `info.sha` (from inspect with allowDirty), then replays the commits after it.
+// Unstaged changes are set aside during the rebase and put back after. On conflicts the rebase is left in
+// progress; abort(cwd, 'rebase', info.head) puts everything back, the changes staged again.
+async function fixup(cwd, info) {
+	if (!await hasStagedChanges(cwd)) {
+		throw new RewordError('nothingStaged');
+	}
+	if (info.sha === info.head) {
+		await git(cwd, ['commit', '--quiet', '--amend', '--no-edit', '--no-verify']);
+		return;
+	}
+	await git(cwd, ['commit', '--quiet', '--no-verify', `--fixup=${info.sha}`]);
+	// The rebase starts at the commit, so it is the first one autosquash can match.
+	await runRebase(cwd, ['-i', '--autosquash', '--autostash', '--no-update-refs', info.parents[0] ?? '--root']);
+}
+
+// Removes `info.sha` (from inspect) from the branch and replays the commits after it.
+async function drop(cwd, info) {
+	if (info.parents.length === 0) {
+		throw new RewordError('root');
+	}
+	await runRebase(cwd, ['--no-update-refs', '--onto', info.parents[0], info.sha]);
+}
+
+// The commits from `info.sha` to HEAD, oldest first, and their messages put together as git's squash does.
+async function squashInfo(cwd, info) {
+	const range = info.parents.length ? [`${info.sha}^..HEAD`] : ['HEAD'];
+	const messages = (await git(cwd, ['log', '--reverse', '--format=%B%x00', ...range]))
+		.split('\0').map(message => message.trim()).filter(Boolean);
+	return { count: messages.length, message: messages.join('\n\n') };
+}
+
+// Replaces the commits from `info.sha` to HEAD by one commit, with the content of HEAD and the given message
+// and author. The working tree and the index are left as they are.
+async function squash(cwd, info, message, author = info.author) {
+	const { name, email, date } = author;
+	const squashed = await git(cwd, ['commit-tree', 'HEAD^{tree}', ...info.parents.flatMap(parent => ['-p', parent]), '-F', '-'], {
+		input: message.endsWith('\n') ? message : `${message}\n`,
+		env: { GIT_AUTHOR_NAME: name, GIT_AUTHOR_EMAIL: email, GIT_AUTHOR_DATE: date },
+	});
+	await git(cwd, ['update-ref', '-m', 'squash: squash commits', 'HEAD', squashed, info.head]);
+	return squashed;
+}
+
+// The parents of a commit, with their subjects, to choose the mainline when reverting a merge.
+async function commitParents(cwd, commit) {
+	const parents = (await git(cwd, ['log', '-1', '--format=%P', commit])).split(' ').filter(Boolean);
+	return Promise.all(parents.map(async sha => ({ sha, subject: await git(cwd, ['log', '-1', '--format=%s', sha]) })));
+}
+
+// Creates a commit that undoes `commit`, like `git revert`; `parent` (1-based) is the mainline of a merge.
+// Throws a RewordError 'conflicts' when it stopped on conflicts, then left in progress.
+async function revert(cwd, commit, parent) {
+	if (await operationInProgress(cwd)) {
+		throw new RewordError('operationInProgress');
+	}
+	try {
+		await git(cwd, ['revert', '--no-edit', ...parent ? ['-m', String(parent)] : [], await resolveCommit(cwd, commit)]);
+	} catch (error) {
+		if ((await gitDirHas(cwd, ['REVERT_HEAD'])).length > 0) {
+			throw new RewordError('conflicts');
+		}
+		throw error;
+	}
+}
+
+async function remotes(cwd) {
+	return (await git(cwd, ['remote'])).split('\n').filter(Boolean);
+}
+
+// Splits a remote branch ref (refs/remotes/<remote>/<branch>) into { remote, branch }; remote names may have slashes.
+async function splitRemoteRef(cwd, ref) {
+	const remote = (await remotes(cwd))
+		.filter(remote => ref.startsWith(`refs/remotes/${remote}/`))
+		.sort((a, b) => b.length - a.length)[0];
+	return remote ? { remote, branch: ref.slice(`refs/remotes/${remote}/`.length) } : undefined;
+}
+
+// The upstream of a local branch, as { remote, ref }, or undefined.
+async function branchUpstream(cwd, branch) {
+	const remote = await git(cwd, ['config', `branch.${branch}.remote`]).catch(() => '');
+	const ref = await git(cwd, ['config', `branch.${branch}.merge`]).catch(() => '');
+	return remote && ref ? { remote, ref } : undefined;
+}
+
+// Pushes a local branch to its upstream, or to `remote` under the same name, then set as its upstream.
+// `force` uses --force-with-lease: only if the remote branch is still where we last fetched it.
+async function pushBranch(cwd, branch, { remote, force = false } = {}) {
+	const upstream = await branchUpstream(cwd, branch);
+	const lease = force ? ['--force-with-lease'] : [];
+	if (upstream) {
+		await git(cwd, ['push', '--porcelain', ...lease, upstream.remote, `refs/heads/${branch}:${upstream.ref}`]);
+	} else {
+		await git(cwd, ['push', '--porcelain', ...lease, '--set-upstream', remote, `refs/heads/${branch}:refs/heads/${branch}`]);
+	}
+}
+
+async function pushTag(cwd, tag, remote) {
+	await git(cwd, ['push', '--porcelain', remote, `refs/tags/${tag}:refs/tags/${tag}`]);
+}
+
+// Updates (or creates) the local branch `local` from a remote branch, fast-forward only, without checking it out.
+async function fetchInto(cwd, remote, branch, local) {
+	if (local === await currentBranch(cwd)) {
+		throw new RewordError('currentBranch');
+	}
+	if (!local || local.startsWith('-') || !await succeeds(cwd, ['check-ref-format', '--branch', local])) {
+		throw new RewordError('invalidName');
+	}
+	await git(cwd, ['fetch', '--quiet', remote, `refs/heads/${branch}:refs/heads/${local}`]);
+}
+
+// Gives up a merge, rebase or revert stopped on conflicts and puts things back as they were before it.
+// `restore`, for a rebase, is a commit to go back to after it, keeping the changes staged.
+async function abort(cwd, operation, restore) {
+	if (operation === 'rebase') {
+		await git(cwd, ['rebase', '--abort']);
+		if (restore) {
+			await git(cwd, ['reset', '--quiet', '--soft', restore]);
+		}
+	} else if (operation === 'revert') {
+		await git(cwd, ['revert', '--abort']);
+	} else if ((await gitDirHas(cwd, ['MERGE_HEAD'])).length > 0) {
+		await git(cwd, ['merge', '--abort']);
+	} else {
+		// A squash merge leaves no MERGE_HEAD; this is what `merge --abort` does.
+		await git(cwd, ['reset', '--merge']);
+	}
+}
+
+// Whether `name` can be a new branch: a valid branch name, not taken. Resolves with a RewordError code
+// ('invalidName' or 'branchExists'), or undefined when it is fine.
+async function checkBranchName(cwd, name) {
+	if (!name || name.startsWith('-') || !await succeeds(cwd, ['check-ref-format', '--branch', name])) {
+		return 'invalidName';
+	}
+	if (await succeeds(cwd, ['show-ref', '--verify', '--quiet', `refs/heads/${name}`])) {
+		return 'branchExists';
+	}
+	return undefined;
+}
+
+// Renames a local branch, like `git branch -m`: its upstream and reflog follow it.
+async function renameBranch(cwd, from, to) {
+	const problem = await checkBranchName(cwd, to);
+	if (problem) {
+		throw new RewordError(problem);
+	}
+	await git(cwd, ['branch', '-m', '--', from, to]);
+}
+
+function commitSubject(cwd, commit) {
+	return git(cwd, ['log', '-1', '--format=%s', commit]);
+}
+
 function resolveCommit(cwd, commit) {
 	return git(cwd, ['rev-parse', '--verify', `${commit}^{commit}`]);
 }
@@ -152,4 +401,4 @@ async function listCommits(cwd, limit = 200) {
 	return commits;
 }
 
-module.exports = { inspect, reword, forcePush, resetTo, hasLocalChanges, resolveCommit, currentBranch, identity, repositoryRoot, listCommits, RewordError };
+module.exports = { commitSubject, fixup, drop, squashInfo, squash, commitParents, revert, remotes, splitRemoteRef, branchUpstream, pushBranch, pushTag, fetchInto, inspect, reword, forcePush, resetTo, checkBranchName, renameBranch, mergeInfo, merge, rebaseInfo, rebase, abort, hasLocalChanges, resolveCommit, currentBranch, identity, repositoryRoot, listCommits, RewordError };

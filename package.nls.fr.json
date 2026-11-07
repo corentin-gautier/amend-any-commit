@@ -1,6 +1,18 @@
 {
-	"description": "Modifier n'importe quel commit, pas seulement le dernier (message, description, auteur, date), et réinitialiser la branche courante sur n'importe quel commit (soft, mixed ou hard). Clic droit sur un commit dans le graphe du contrôle de code source, ou depuis la chronologie et la palette de commandes.",
+	"description": "Ajoute au graphe intégré du contrôle de code source de VS Code les actions Git qui lui manquent : modifier, compléter, squasher, supprimer et annuler des commits, fusionner, rebaser, réinitialiser, et gérer branches et tags. Sans nouvelle vue.",
 	"command.pick": "Modifier un commit...",
 	"command.amend": "Modifier le commit...",
-	"command.reset": "Réinitialiser la branche courante sur ce commit..."
+	"command.reset": "Réinitialiser la branche courante sur ce commit...",
+	"command.merge": "Fusionner dans la branche courante...",
+	"command.rebase": "Rebaser la branche courante sur ce commit...",
+	"command.renameBranch": "Renommer la branche...",
+	"command.fixup": "Ajouter les modifications indexées à ce commit",
+	"command.squash": "Squasher les commits d'ici à HEAD...",
+	"command.drop": "Supprimer le commit...",
+	"command.revert": "Annuler le commit (revert)...",
+	"command.pushBranch": "Pousser la branche...",
+	"command.fetchBranch": "Récupérer dans une branche locale...",
+	"command.copyBranchName": "Copier le nom de la branche",
+	"command.pushTag": "Pousser le tag...",
+	"command.copyTagName": "Copier le nom du tag"
 }

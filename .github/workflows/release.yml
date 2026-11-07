@@ -26,17 +26,17 @@ jobs:
           git config --global user.name "CI"
           git config --global user.email "ci@example.com"
       - run: npm test
-      - run: npx --yes @vscode/vsce package --out amend-any-commit.vsix
+      - run: npx --yes @vscode/vsce package --out source-control-graph-plus.vsix
       # The Source Control Graph menu is a proposed API: it only shows where VS Code allows it,
       # the other entry points work everywhere.
       # Marketplace Trusted Publishing: GitHub's OIDC token replaces a stored PAT. Needs a policy for
       # this repository and release.yml on the publisher's Trusted Publishing page.
       - name: Publish to the VS Code Marketplace
-        run: npx --yes @vscode/vsce publish --oidc --packagePath amend-any-commit.vsix --allow-proposed-apis contribSourceControlHistoryItemMenu
+        run: npx --yes @vscode/vsce publish --oidc --packagePath source-control-graph-plus.vsix --allow-proposed-apis contribSourceControlHistoryItemMenu
       - name: Publish to Open VSX
         if: env.OVSX_PAT != ''
-        run: npx --yes ovsx publish amend-any-commit.vsix
+        run: npx --yes ovsx publish source-control-graph-plus.vsix
       - name: Attach the package to a GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" amend-any-commit.vsix --title "$GITHUB_REF_NAME" --notes-file CHANGELOG.md
+        run: gh release create "$GITHUB_REF_NAME" source-control-graph-plus.vsix --title "$GITHUB_REF_NAME" --notes-file CHANGELOG.md
