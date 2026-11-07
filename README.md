@@ -2,7 +2,9 @@
 
 *Formerly Graph Commit Tools and Amend Any Commit.*
 
-Keep VS Code's built-in Source Control Graph. Right-click a commit: the actions I used to open Git Graph for are now in its menu. No new view to learn, no webview, nothing to keep in sync.
+Adds the Git actions missing from VS Code's built-in Source Control Graph, right in its right-click menu. No new view to learn, no webview, nothing to keep in sync.
+
+![The right-click menu of a commit in the Source Control Graph, with the actions added by the extension](images/menu.png)
 
 | In the right-click menu | VS Code already has | This extension adds |
 | --- | --- | --- |
@@ -27,7 +29,7 @@ Without it, only editing a commit is available, from the Timeline, the Command P
 
 ## Edit a commit
 
-Any commit on your branch, not just the last one. I often notice a typo three commits too late, and `git commit --amend` only fixes the last one.
+Any commit on the current branch, not just the last one, which is all `git commit --amend` can do.
 
 Pick the commit from one of these places:
 
@@ -70,7 +72,7 @@ Squash and drop rewrite the history like editing a commit: for a commit already 
 
 ## Merge, rebase, reset
 
-As in Git Graph, on any commit of the graph:
+On any commit of the graph:
 
 - **Merge into Current Branch...**, then choose how:
   - **Merge Commit** (`--no-ff`, selected by default): always creates a merge commit.
